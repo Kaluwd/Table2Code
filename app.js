@@ -116,22 +116,27 @@
   const inputArea = document.getElementById('input-area');
   const placeholder = document.getElementById('placeholder');
 
-  // Hide placeholder when user focuses or pastes
-  inputArea.addEventListener('focus', () => {
+  // Hide placeholder immediately when clicked/pasted
+  inputArea.addEventListener('mousedown', () => {
     placeholder.style.display = 'none';
   });
 
-  inputArea.addEventListener('paste', (e) => {
+  inputArea.addEventListener('paste', () => {
     placeholder.style.display = 'none';
-    // Your existing paste handling code
   });
 
-  // Show placeholder if empty
+  // Show placeholder only when completely empty
   inputArea.addEventListener('blur', () => {
     if (inputArea.textContent.trim() === '') {
       placeholder.style.display = 'block';
     }
   });
+
+  // Initialize - hide if there's content (for shared links etc)
+  if (inputArea.textContent.trim() !== '') {
+    placeholder.style.display = 'none';
+  }
+
         // JSON Generator
         function generateJSON() {
             const headers = tableData[0];

@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table2Code - Smart Table Converter</title>
+    <meta name="description" content="Convert Excel/CSV data to SQL, TypeScript, JSON and more with one click. Perfect for developers!">
     <style>
         :root {
             --primary: #3b82f6;
@@ -13,93 +14,94 @@
             --dark-container: #1e293b;
             --dark-output: #334155;
         }
+        * {
+            box-sizing: border-box;
+        }
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             line-height: 1.6;
             background-color: #f1f5f9;
             color: var(--dark);
-            max-width: 900px;
-            margin: 0 auto;
-            padding: 20px;
+            margin: 0;
+            padding: 15px;
             transition: all 0.3s;
         }
-        h1 { color: var(--primary); }
         .container {
             background: white;
             border-radius: 10px;
-            padding: 25px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: all 0.3s;
+            max-width: 100%;
+            overflow: hidden;
+        }
+        h1 {
+            color: var(--primary);
+            font-size: clamp(1.5rem, 5vw, 2rem);
+            margin-top: 0;
         }
         #input-area {
-            min-height: 150px;
+            min-height: 120px;
             border: 2px dashed #cbd5e1;
-            padding: 15px;
-            margin-bottom: 20px;
+            padding: 12px;
+            margin-bottom: 15px;
             outline: none;
             background: white;
             color: var(--dark);
             transition: all 0.3s;
+            width: 100%;
+            font-family: inherit;
         }
         #output-area {
             background: #f8fafc;
             border: 1px solid #e2e8f0;
-            padding: 15px;
+            padding: 12px;
             border-radius: 5px;
             white-space: pre-wrap;
-            font-family: 'Fira Code', monospace;
+            font-family: 'Fira Code', monospace, Menlo, Consolas;
             overflow-x: auto;
             color: #1e293b;
             transition: all 0.3s;
+            font-size: 14px;
         }
-        #editable-table {
-            display: none;
-            margin-top: 20px;
-            overflow-x: auto;
-        }
-        #editable-table table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 15px;
-        }
-        #editable-table th, #editable-table td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-            position: relative;
-        }
-        #editable-table th {
-            background-color: #f1f5f9;
-        }
-        .cell-edit {
-            width: 100%;
-            border: none;
-            padding: 5px;
-            font-family: inherit;
+        .btn-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin: 10px 0;
         }
         .btn {
             background: var(--primary);
             color: white;
             border: none;
-            padding: 8px 15px;
-            margin: 0 10px 10px 0;
+            padding: 8px 12px;
             border-radius: 5px;
             cursor: pointer;
             transition: all 0.2s;
             font-size: 14px;
+            flex: 1 0 auto;
+            white-space: nowrap;
+            text-align: center;
         }
-        .btn:hover { opacity: 0.9; }
+        .btn:hover {
+            opacity: 0.9;
+        }
         .btn-secondary {
             background: #e2e8f0;
             color: var(--dark);
         }
-        .btn-warning { background: #f59e0b; }
-        .btn-danger { background: #ef4444; }
-        .btn-success { background: #10b981; }
+        .btn-warning {
+            background: #f59e0b;
+        }
+        .btn-danger {
+            background: #ef4444;
+        }
+        .btn-success {
+            background: #10b981;
+        }
         .btn-sm {
-            padding: 4px 8px;
-            font-size: 12px;
-            margin: 2px;
+            padding: 6px 10px;
+            font-size: 13px;
         }
         .dark-mode {
             background-color: var(--dark-bg);
@@ -119,25 +121,14 @@
             color: #e2e8f0;
             border-color: #475569;
         }
-        .dark-mode #editable-table th {
-            background-color: #334155;
-        }
-        .dark-mode #editable-table th,
-        .dark-mode #editable-table td {
-            border-color: #475569;
-        }
-        .format-options {
-            margin: 15px 0;
-            padding: 10px;
-            background: #f1f5f9;
-            border-radius: 5px;
-        }
-        .dark-mode .format-options {
-            background: #334155;
+        .section-title {
+            font-weight: 600;
+            margin: 15px 0 8px 0;
+            font-size: 16px;
         }
         .issues-panel {
             margin: 15px 0;
-            padding: 15px;
+            padding: 12px;
             background: #fee2e2;
             border-radius: 5px;
             color: #b91c1c;
@@ -150,8 +141,8 @@
             margin: 8px 0;
             padding: 8px;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+            gap: 8px;
             background: rgba(255,255,255,0.7);
             border-radius: 4px;
         }
@@ -160,17 +151,116 @@
         }
         .issue-actions {
             display: flex;
-            gap: 5px;
+            flex-wrap: wrap;
+            gap: 6px;
         }
-        .action-buttons {
+        #editable-table {
+            display: none;
             margin-top: 15px;
-            display: flex;
-            gap: 10px;
+            overflow-x: auto;
         }
-        .table-actions {
-            display: flex;
-            gap: 5px;
+        #data-table {
+            width: 100%;
+            border-collapse: collapse;
             margin-bottom: 10px;
+            font-size: 14px;
+        }
+        #data-table th, #data-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            position: relative;
+        }
+        #data-table th {
+            background-color: #f1f5f9;
+            position: sticky;
+            top: 0;
+        }
+        .dark-mode #data-table th {
+            background-color: #334155;
+        }
+        .dark-mode #data-table th,
+        .dark-mode #data-table td {
+            border-color: #475569;
+        }
+        .cell-edit {
+            width: 100%;
+            border: none;
+            padding: 4px;
+            font-family: inherit;
+            background: transparent;
+        }
+        .dark-mode .cell-edit {
+            color: white;
+        }
+        .footer {
+            margin-top: 30px;
+            padding-top: 15px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+            font-size: 13px;
+            color: #64748b;
+        }
+        .dark-mode .footer {
+            border-color: #475569;
+            color: #94a3b8;
+        }
+        .footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        .footer a:hover {
+            text-decoration: underline;
+        }
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 8px 0;
+        }
+        #info-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 15px;
+        }
+        .modal-content {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 500px;
+            max-height: 80vh;
+            overflow: auto;
+            width: 100%;
+        }
+        .dark-mode .modal-content {
+            background: var(--dark-container);
+        }
+        @media (max-width: 600px) {
+            .btn {
+                padding: 8px;
+                font-size: 13px;
+            }
+            #input-area {
+                min-height: 100px;
+                padding: 10px;
+                font-size: 14px;
+            }
+            #output-area {
+                padding: 10px;
+                font-size: 13px;
+            }
+            .container {
+                padding: 15px;
+            }
         }
     </style>
 </head>
@@ -185,10 +275,10 @@
             placeholder="Paste your table here (e.g. from Excel)..."
         ></div>
         
-        <div class="format-options">
-            <strong>Convert To:</strong><br>
+        <div class="section-title">Convert To:</div>
+        <div class="btn-group">
             <button class="btn" onclick="convertTo('sql')">SQL</button>
-            <button class="btn" onclick="convertTo('smart-sql')">SQL (Smart)</button>
+            <button class="btn" onclick="convertTo('smart-sql')">Smart SQL</button>
             <button class="btn" onclick="convertTo('typescript')">TypeScript</button>
             <button class="btn" onclick="convertTo('json')">JSON</button>
             <button class="btn" onclick="convertTo('mock-api')">Mock API</button>
@@ -196,36 +286,54 @@
             <button class="btn" onclick="downloadCSV()">Download CSV</button>
         </div>
         
-        <div class="format-options">
-            <strong>Data Tools:</strong><br>
+        <div class="section-title">Data Tools:</div>
+        <div class="btn-group">
             <button class="btn btn-warning" onclick="analyzeData()">🔍 Find Issues</button>
-            <button class="btn btn-secondary" onclick="cleanData()">🛠 Fix Common Issues</button>
+            <button class="btn btn-secondary" onclick="cleanData()">🛠 Fix Common</button>
             <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy</button>
             <button class="btn" onclick="generateShareLink()">🔗 Share</button>
-            <button class="btn" style="float:right" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+            <button class="btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
         </div>
         
         <div id="issues-area" class="issues-panel" style="display:none;">
-            <h3>⚠️ Data Issues Found:</h3>
+            <h3 style="margin-top:0;">⚠️ Data Issues Found:</h3>
             <div id="issues-list"></div>
-            <div class="action-buttons">
-                <button class="btn" onclick="showEditableTable()">Edit Full Table</button>
-                <button class="btn btn-danger" onclick="hideIssuesPanel()">Close</button>
+            <div class="btn-group" style="margin-top:10px;">
+                <button class="btn btn-sm" onclick="showEditableTable()">Edit Full Table</button>
+                <button class="btn btn-sm btn-danger" onclick="hideIssuesPanel()">Close</button>
             </div>
         </div>
         
-        <h3>Output:</h3>
+        <div class="section-title">Output:</div>
         <div id="output-area">Your converted code will appear here...</div>
         
         <div id="editable-table">
-            <div class="table-actions">
-                <button class="btn btn-success btn-sm" onclick="saveTableEdits()">💾 Save Changes</button>
+            <div class="btn-group">
+                <button class="btn btn-success btn-sm" onclick="saveTableEdits()">💾 Save</button>
                 <button class="btn btn-danger btn-sm" onclick="hideEditableTable()">❌ Cancel</button>
                 <button class="btn btn-sm" onclick="addNewRow()">➕ Add Row</button>
             </div>
-            <table id="data-table">
-                <!-- Table will be generated here -->
-            </table>
+            <table id="data-table"></table>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <div>Table2Code v1.0.0</div>
+        <div>Developed by <a href="#" id="developer-link">Kws</a></div>
+        <div class="footer-links">
+<!--             <a href="#" onclick="showAbout()">About</a>
+            <a href="#" onclick="showPrivacy()">Privacy</a>
+            <a href="#" onclick="showTerms()">Terms</a> -->
+            <a href="#" target="_blank">GitHub</a>
+        </div>
+        <div>© 2025 All rights reserved</div>
+    </div>
+
+    <div id="info-modal">
+        <div class="modal-content">
+            <h3 style="margin-top:0;" id="modal-title">About</h3>
+            <div id="modal-content"></div>
+            <button class="btn" onclick="document.getElementById('info-modal').style.display='none'" style="margin-top:15px;">Close</button>
         </div>
     </div>
 
@@ -707,6 +815,12 @@
         // Dark mode toggle
         function toggleDarkMode() {
             document.body.classList.toggle('dark-mode');
+            localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+        }
+        
+        // Check for saved dark mode preference
+        if (localStorage.getItem('darkMode') === 'true') {
+            document.body.classList.add('dark-mode');
         }
         
         // Refresh table display
@@ -722,6 +836,56 @@
             if (headers.some(h => h.toLowerCase().includes('order'))) return 'orders';
             return 'table_name';
         }
+        
+        // About modal
+        function showAbout() {
+            document.getElementById('modal-title').textContent = 'About Table2Code';
+            document.getElementById('modal-content').innerHTML = `
+                <p>Table2Code is a free web tool that helps developers convert tabular data between various formats.</p>
+                <p><strong>Features:</strong></p>
+                <ul>
+                    <li>Convert Excel/CSV to SQL, TypeScript, JSON, Markdown</li>
+                    <li>Smart data type detection</li>
+                    <li>Data cleaning tools</li>
+                    <li>100% client-side - your data never leaves your browser</li>
+                </ul>
+                <p>No registration required - use it anytime for free!</p>
+            `;
+            document.getElementById('info-modal').style.display = 'flex';
+        }
+        
+        // Privacy modal
+        function showPrivacy() {
+            document.getElementById('modal-title').textContent = 'Privacy Policy';
+            document.getElementById('modal-content').innerHTML = `
+                <p>Table2Code respects your privacy:</p>
+                <ul>
+                    <li>All processing happens in your browser</li>
+                    <li>We don't store your data on any servers</li>
+                    <li>Share links are encoded in the URL (optional)</li>
+                    <li>No cookies or tracking</li>
+                </ul>
+            `;
+            document.getElementById('info-modal').style.display = 'flex';
+        }
+        
+        // Terms modal
+        function showTerms() {
+            document.getElementById('modal-title').textContent = 'Terms of Use';
+            document.getElementById('modal-content').innerHTML = `
+                <p>By using Table2Code, you agree to:</p>
+                <ul>
+                    <li>Use this tool for lawful purposes only</li>
+                    <li>Not use it to process sensitive personal data</li>
+                    <li>Accept that this is provided "as-is" without warranties</li>
+                </ul>
+                <p>The developer is not liable for any data loss or misuse.</p>
+            `;
+            document.getElementById('info-modal').style.display = 'flex';
+        }
+        
+        // Set developer link (replace with your actual link)
+        document.getElementById('developer-link').href = "https://yourportfolio.com";
         
         // Initialize
         loadSharedData();

@@ -113,14 +113,25 @@
             
             return `interface ${guessTableName().charAt(0).toUpperCase() + guessTableName().slice(1)} {\n${props.join('\n')}\n}`;
         }
-        // In your initialization code:
-document.getElementById('input-area').addEventListener('click', function() {
-    if (this.textContent.trim() === '' || 
-        this.textContent === 'Paste your table here (e.g. from Excel)...') {
-        this.textContent = `Paste your table here (e.g. from Excel)...\nid\tname\temail\t\tjoin_date\n1\tmiki\tmiki@dev.com\t2023-01-15\n2\tyishak\tyishak@dev.com\t2023-02-20`;
-        this.style.whiteSpace = 'pre';
+  const inputArea = document.getElementById('input-area');
+  const placeholder = document.getElementById('placeholder');
+
+  // Hide placeholder when user focuses or pastes
+  inputArea.addEventListener('focus', () => {
+    placeholder.style.display = 'none';
+  });
+
+  inputArea.addEventListener('paste', (e) => {
+    placeholder.style.display = 'none';
+    // Your existing paste handling code
+  });
+
+  // Show placeholder if empty
+  inputArea.addEventListener('blur', () => {
+    if (inputArea.textContent.trim() === '') {
+      placeholder.style.display = 'block';
     }
-});
+  });
         // JSON Generator
         function generateJSON() {
             const headers = tableData[0];

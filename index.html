@@ -270,14 +270,14 @@
         <p>Paste any table (Excel, Sheets, web) and convert to developer formats:</p>
         
         <div 
-            id="input-area" 
-            contenteditable="true" 
-            placeholder="Paste your table here (e.g. from Excel)...
+  id="input-area" 
+  contenteditable="true" 
+  placeholder="Paste your table here (e.g. from Excel)..."
+  style="white-space: pre"
+>Paste your table here (e.g. from Excel)...
 id  name    email           join_date
-1   miki   miki@dev.com     2023-01-15
-2   yishak  yishak@dev.com  2023-02-20
-"
-        ></div>
+1   miki    miki@dev.com    2023-01-15
+2   yishak  yishak@dev.com  2023-02-20</div>
         
         <div class="section-title">Convert To:</div>
         <div class="btn-group">
@@ -457,7 +457,14 @@ id  name    email           join_date
             
             return `interface ${guessTableName().charAt(0).toUpperCase() + guessTableName().slice(1)} {\n${props.join('\n')}\n}`;
         }
-        
+        // In your initialization code:
+document.getElementById('input-area').addEventListener('click', function() {
+    if (this.textContent.trim() === '' || 
+        this.textContent === 'Paste your table here (e.g. from Excel)...') {
+        this.textContent = `Paste your table here (e.g. from Excel)...\nid\tname\temail\t\tjoin_date\n1\tmiki\tmiki@dev.com\t2023-01-15\n2\tyishak\tyishak@dev.com\t2023-02-20`;
+        this.style.whiteSpace = 'pre';
+    }
+});
         // JSON Generator
         function generateJSON() {
             const headers = tableData[0];

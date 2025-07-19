@@ -1,0 +1,730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Table2Code - Smart Table Converter</title>
+    <style>
+        :root {
+            --primary: #3b82f6;
+            --dark: #1e293b;
+            --light: #f8fafc;
+            --dark-bg: #0f172a;
+            --dark-container: #1e293b;
+            --dark-output: #334155;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            line-height: 1.6;
+            background-color: #f1f5f9;
+            color: var(--dark);
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            transition: all 0.3s;
+        }
+        h1 { color: var(--primary); }
+        .container {
+            background: white;
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+        }
+        #input-area {
+            min-height: 150px;
+            border: 2px dashed #cbd5e1;
+            padding: 15px;
+            margin-bottom: 20px;
+            outline: none;
+            background: white;
+            color: var(--dark);
+            transition: all 0.3s;
+        }
+        #output-area {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            padding: 15px;
+            border-radius: 5px;
+            white-space: pre-wrap;
+            font-family: 'Fira Code', monospace;
+            overflow-x: auto;
+            color: #1e293b;
+            transition: all 0.3s;
+        }
+        #editable-table {
+            display: none;
+            margin-top: 20px;
+            overflow-x: auto;
+        }
+        #editable-table table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        #editable-table th, #editable-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            position: relative;
+        }
+        #editable-table th {
+            background-color: #f1f5f9;
+        }
+        .cell-edit {
+            width: 100%;
+            border: none;
+            padding: 5px;
+            font-family: inherit;
+        }
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            margin: 0 10px 10px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: var(--dark);
+        }
+        .btn-warning { background: #f59e0b; }
+        .btn-danger { background: #ef4444; }
+        .btn-success { background: #10b981; }
+        .btn-sm {
+            padding: 4px 8px;
+            font-size: 12px;
+            margin: 2px;
+        }
+        .dark-mode {
+            background-color: var(--dark-bg);
+            color: var(--light);
+        }
+        .dark-mode .container {
+            background: var(--dark-container);
+            color: white;
+        }
+        .dark-mode #input-area {
+            background: var(--dark-container);
+            color: white;
+            border-color: #475569;
+        }
+        .dark-mode #output-area {
+            background: var(--dark-output);
+            color: #e2e8f0;
+            border-color: #475569;
+        }
+        .dark-mode #editable-table th {
+            background-color: #334155;
+        }
+        .dark-mode #editable-table th,
+        .dark-mode #editable-table td {
+            border-color: #475569;
+        }
+        .format-options {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f1f5f9;
+            border-radius: 5px;
+        }
+        .dark-mode .format-options {
+            background: #334155;
+        }
+        .issues-panel {
+            margin: 15px 0;
+            padding: 15px;
+            background: #fee2e2;
+            border-radius: 5px;
+            color: #b91c1c;
+        }
+        .dark-mode .issues-panel {
+            background: #7f1d1d;
+            color: #fecaca;
+        }
+        .issue-item {
+            margin: 8px 0;
+            padding: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255,255,255,0.7);
+            border-radius: 4px;
+        }
+        .dark-mode .issue-item {
+            background: rgba(0,0,0,0.2);
+        }
+        .issue-actions {
+            display: flex;
+            gap: 5px;
+        }
+        .action-buttons {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        .table-actions {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Table2Code</h1>
+        <p>Paste any table (Excel, Sheets, web) and convert to developer formats:</p>
+        
+        <div 
+            id="input-area" 
+            contenteditable="true" 
+            placeholder="Paste your table here (e.g. from Excel)..."
+        ></div>
+        
+        <div class="format-options">
+            <strong>Convert To:</strong><br>
+            <button class="btn" onclick="convertTo('sql')">SQL</button>
+            <button class="btn" onclick="convertTo('smart-sql')">SQL (Smart)</button>
+            <button class="btn" onclick="convertTo('typescript')">TypeScript</button>
+            <button class="btn" onclick="convertTo('json')">JSON</button>
+            <button class="btn" onclick="convertTo('mock-api')">Mock API</button>
+            <button class="btn" onclick="convertTo('markdown')">Markdown</button>
+            <button class="btn" onclick="downloadCSV()">Download CSV</button>
+        </div>
+        
+        <div class="format-options">
+            <strong>Data Tools:</strong><br>
+            <button class="btn btn-warning" onclick="analyzeData()">🔍 Find Issues</button>
+            <button class="btn btn-secondary" onclick="cleanData()">🛠 Fix Common Issues</button>
+            <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy</button>
+            <button class="btn" onclick="generateShareLink()">🔗 Share</button>
+            <button class="btn" style="float:right" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+        </div>
+        
+        <div id="issues-area" class="issues-panel" style="display:none;">
+            <h3>⚠️ Data Issues Found:</h3>
+            <div id="issues-list"></div>
+            <div class="action-buttons">
+                <button class="btn" onclick="showEditableTable()">Edit Full Table</button>
+                <button class="btn btn-danger" onclick="hideIssuesPanel()">Close</button>
+            </div>
+        </div>
+        
+        <h3>Output:</h3>
+        <div id="output-area">Your converted code will appear here...</div>
+        
+        <div id="editable-table">
+            <div class="table-actions">
+                <button class="btn btn-success btn-sm" onclick="saveTableEdits()">💾 Save Changes</button>
+                <button class="btn btn-danger btn-sm" onclick="hideEditableTable()">❌ Cancel</button>
+                <button class="btn btn-sm" onclick="addNewRow()">➕ Add Row</button>
+            </div>
+            <table id="data-table">
+                <!-- Table will be generated here -->
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Global data store
+        let tableData = [];
+        let currentFormat = '';
+        
+        // Initialize with sample data if empty
+        document.getElementById('input-area').addEventListener('click', function() {
+            if (this.textContent.trim() === '') {
+                this.textContent = 'id\tname\temail\tjoin_date\n1\tAlice\talice@test.com\t2023-01-15\n2\tBob\tbob@test.com\t2023-02-20\n3\t\tcharlie@test.com\t2023/03/10';
+            }
+        });
+        
+        // Detect pasted table data
+        document.getElementById('input-area').addEventListener('paste', (e) => {
+            e.preventDefault();
+            const text = e.clipboardData.getData('text/plain');
+            parseTable(text);
+        });
+        
+        // Parse tabular data into 2D array
+        function parseTable(text) {
+            const rows = text.trim().split('\n').map(row => {
+                return row.split('\t').map(cell => cell.trim());
+            });
+            tableData = rows;
+            document.getElementById('input-area').textContent = text;
+            convertTo('smart-sql');
+        }
+        
+        // Conversion logic
+        function convertTo(format) {
+            if (tableData.length === 0) return;
+            
+            currentFormat = format;
+            let output;
+            
+            switch(format) {
+                case 'sql':
+                    output = generateSQL();
+                    break;
+                case 'smart-sql':
+                    output = generateSmartSQL();
+                    break;
+                case 'typescript':
+                    output = generateTypeScript();
+                    break;
+                case 'json':
+                    output = generateJSON();
+                    break;
+                case 'mock-api':
+                    output = generateMockAPI();
+                    break;
+                case 'markdown':
+                    output = generateMarkdown();
+                    break;
+                case 'csv':
+                    output = generateCSV();
+                    break;
+                default:
+                    output = "Unsupported format";
+            }
+            
+            document.getElementById('output-area').textContent = output;
+        }
+        
+        // SQL Generator (basic)
+        function generateSQL() {
+            const headers = tableData[0];
+            let sql = `INSERT INTO ${guessTableName()} (${headers.join(', ')}) VALUES\n`;
+            
+            for (let i = 1; i < tableData.length; i++) {
+                const row = tableData[i].map(cell => `'${cell.replace(/'/g, "''")}'`);
+                sql += `  (${row.join(', ')})${i < tableData.length - 1 ? ',' : ';'}\n`;
+            }
+            
+            return sql;
+        }
+        
+        // SQL Generator (smart)
+        function generateSmartSQL() {
+            const headers = tableData[0];
+            const firstRow = tableData[1] || [];
+            const tableName = guessTableName();
+            
+            // Infer column types
+            const columns = headers.map((header, i) => {
+                const sample = firstRow[i] || '';
+                let type = 'VARCHAR(255)';
+                if (!isNaN(sample)) type = 'INT';
+                if (sample.match(/^\d{4}-\d{2}-\d{2}$/)) type = 'DATE';
+                if (sample.match(/^(true|false)$/i)) type = 'BOOLEAN';
+                if (header.toLowerCase() === 'id') type += ' PRIMARY KEY';
+                return `  ${header} ${type}`;
+            });
+            
+            return `CREATE TABLE ${tableName} (\n${columns.join(',\n')}\n);\n\n` + generateSQL();
+        }
+        
+        // TypeScript Generator
+        function generateTypeScript() {
+            const headers = tableData[0];
+            const firstRow = tableData[1] || [];
+            
+            const props = headers.map((header, i) => {
+                const sample = firstRow[i] || '';
+                let type = 'string';
+                if (!isNaN(sample)) type = 'number';
+                if (sample === 'true' || sample === 'false') type = 'boolean';
+                if (sample.match(/^\d{4}-\d{2}-\d{2}$/) || sample.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                    type = 'Date | string';
+                }
+                return `  ${header}: ${type};`;
+            });
+            
+            return `interface ${guessTableName().charAt(0).toUpperCase() + guessTableName().slice(1)} {\n${props.join('\n')}\n}`;
+        }
+        
+        // JSON Generator
+        function generateJSON() {
+            const headers = tableData[0];
+            const json = [];
+            
+            for (let i = 1; i < tableData.length; i++) {
+                const obj = {};
+                headers.forEach((header, j) => {
+                    obj[header] = tableData[i][j];
+                });
+                json.push(obj);
+            }
+            
+            return JSON.stringify(json, null, 2);
+        }
+        
+        // Mock API Generator
+        function generateMockAPI() {
+            const headers = tableData[0];
+            const mockData = tableData.slice(1).map(row => {
+                return headers.reduce((obj, header, i) => ({ ...obj, [header]: row[i] }), {});
+            });
+            return JSON.stringify({ [guessTableName()]: mockData }, null, 2);
+        }
+        
+        // Markdown Generator
+        function generateMarkdown() {
+            let md = '';
+            const headers = tableData[0];
+            
+            // Header row
+            md += `| ${headers.join(' | ')} |\n`;
+            
+            // Separator
+            md += `| ${headers.map(() => '---').join(' | ')} |\n`;
+            
+            // Data rows
+            for (let i = 1; i < tableData.length; i++) {
+                md += `| ${tableData[i].join(' | ')} |\n`;
+            }
+            
+            return md;
+        }
+        
+        // CSV Generator
+        function generateCSV() {
+            return tableData.map(row => row.join(',')).join('\n');
+        }
+        
+        // Download CSV
+        function downloadCSV() {
+            const csv = generateCSV();
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'table_data.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+        
+        // Clean dirty data
+        function cleanData() {
+            tableData = tableData.map(row => 
+                row.map(cell => {
+                    if (cell === "NULL" || cell === "") return "NULL";
+                    if (cell.match(/^\d{2}\/\d{2}\/\d{4}$/)) return cell.split('/').reverse().join('-');
+                    return cell.trim();
+                })
+            );
+            refreshTable();
+            convertTo(currentFormat);
+            alert("Common issues fixed: NULLs, dates, whitespace");
+        }
+        
+        // Analyze data for issues
+        function analyzeData() {
+            const issues = [];
+            const headers = tableData[0] || [];
+            
+            // Check for duplicate rows
+            const uniqueRows = new Set();
+            for (let i = 1; i < tableData.length; i++) {
+                const rowStr = tableData[i].join('|');
+                if (uniqueRows.has(rowStr)) {
+                    issues.push({
+                        type: 'duplicate',
+                        row: i,
+                        value: tableData[i].join(', ')
+                    });
+                }
+                uniqueRows.add(rowStr);
+            }
+            
+            // Check for empty cells
+            for (let i = 1; i < tableData.length; i++) {
+                for (let j = 0; j < tableData[i].length; j++) {
+                    if (tableData[i][j] === '') {
+                        issues.push({
+                            type: 'empty',
+                            row: i,
+                            column: headers[j],
+                            colIndex: j
+                        });
+                    }
+                }
+            }
+            
+            // Check date formats
+            const dateColumns = headers.filter(h => h.toLowerCase().includes('date'));
+            for (let i = 1; i < tableData.length; i++) {
+                dateColumns.forEach((col) => {
+                    const colIndex = headers.indexOf(col);
+                    const val = tableData[i][colIndex];
+                    if (val && !val.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        issues.push({
+                            type: 'invalid_date',
+                            row: i,
+                            column: col,
+                            colIndex: colIndex,
+                            value: val
+                        });
+                    }
+                });
+            }
+            
+            displayIssues(issues);
+        }
+        
+        // Display found issues
+        function displayIssues(issues) {
+            const issuesList = document.getElementById('issues-list');
+            const issuesArea = document.getElementById('issues-area');
+            
+            if (issues.length === 0) {
+                issuesList.innerHTML = '<p>No issues found! Your data looks clean.</p>';
+                issuesArea.style.display = 'block';
+                return;
+            }
+            
+            issuesList.innerHTML = issues.map(issue => {
+                let message = '';
+                let actions = '';
+                
+                switch(issue.type) {
+                    case 'duplicate':
+                        message = `Row ${issue.row + 1} is a duplicate: ${issue.value}`;
+                        actions = `
+                            <button class="btn btn-sm btn-danger" onclick="deleteRow(${issue.row})">Delete</button>
+                            <button class="btn btn-sm" onclick="showEditableTableHighlight(${issue.row})">Edit</button>
+                        `;
+                        break;
+                    case 'empty':
+                        message = `Empty cell at row ${issue.row + 1}, column "${issue.column}"`;
+                        actions = `
+                            <button class="btn btn-sm" onclick="setCellValue(${issue.row}, ${issue.colIndex}, 'NULL')">Set NULL</button>
+                            <button class="btn btn-sm" onclick="showEditableTableHighlight(${issue.row}, ${issue.colIndex})">Edit</button>
+                        `;
+                        break;
+                    case 'invalid_date':
+                        message = `Invalid date at row ${issue.row + 1}, column "${issue.column}": ${issue.value}`;
+                        actions = `
+                            <button class="btn btn-sm" onclick="fixDateFormat(${issue.row}, ${issue.colIndex})">Fix Format</button>
+                            <button class="btn btn-sm" onclick="showEditableTableHighlight(${issue.row}, ${issue.colIndex})">Edit</button>
+                        `;
+                        break;
+                }
+                
+                return `<div class="issue-item">
+                    <div>${message}</div>
+                    <div class="issue-actions">${actions}</div>
+                </div>`;
+            }).join('');
+            
+            issuesArea.style.display = 'block';
+        }
+        
+        // Show editable table with highlight
+        function showEditableTableHighlight(rowIndex, colIndex = null) {
+            showEditableTable();
+            if (rowIndex !== undefined) {
+                const rows = document.querySelectorAll('#data-table tr');
+                if (rows[rowIndex + 1]) { // +1 for header row
+                    rows[rowIndex + 1].style.backgroundColor = 'rgba(245, 158, 11, 0.3)';
+                    
+                    if (colIndex !== null) {
+                        const cells = rows[rowIndex + 1].querySelectorAll('td');
+                        if (cells[colIndex]) {
+                            cells[colIndex].style.backgroundColor = 'rgba(245, 158, 11, 0.6)';
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Show editable table
+        function showEditableTable() {
+            const table = document.getElementById('data-table');
+            table.innerHTML = '';
+            
+            // Create header row
+            const headerRow = document.createElement('tr');
+            tableData[0].forEach((header, colIndex) => {
+                const th = document.createElement('th');
+                th.textContent = header;
+                
+                // Add column delete button
+                if (colIndex > 0) { // Don't allow deleting first column
+                    const delBtn = document.createElement('button');
+                    delBtn.className = 'btn btn-sm btn-danger';
+                    delBtn.textContent = '×';
+                    delBtn.style.marginLeft = '5px';
+                    delBtn.onclick = () => deleteColumn(colIndex);
+                    th.appendChild(delBtn);
+                }
+                
+                headerRow.appendChild(th);
+            });
+            
+            // Add empty cell for row actions
+            const actionsTh = document.createElement('th');
+            actionsTh.textContent = 'Actions';
+            headerRow.appendChild(actionsTh);
+            table.appendChild(headerRow);
+            
+            // Create data rows
+            for (let i = 1; i < tableData.length; i++) {
+                const row = document.createElement('tr');
+                
+                tableData[i].forEach((cell, colIndex) => {
+                    const td = document.createElement('td');
+                    
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = 'cell-edit';
+                    input.value = cell;
+                    input.dataset.row = i - 1;
+                    input.dataset.col = colIndex;
+                    
+                    td.appendChild(input);
+                    row.appendChild(td);
+                });
+                
+                // Add row delete button
+                const actionsTd = document.createElement('td');
+                const delBtn = document.createElement('button');
+                delBtn.className = 'btn btn-sm btn-danger';
+                delBtn.textContent = 'Delete';
+                delBtn.onclick = () => {
+                    deleteRow(i - 1);
+                    showEditableTable(); // Refresh the table view
+                };
+                actionsTd.appendChild(delBtn);
+                row.appendChild(actionsTd);
+                
+                table.appendChild(row);
+            }
+            
+            document.getElementById('editable-table').style.display = 'block';
+            document.getElementById('issues-area').style.display = 'none';
+        }
+        
+        // Hide editable table
+        function hideEditableTable() {
+            document.getElementById('editable-table').style.display = 'none';
+        }
+        
+        // Hide issues panel
+        function hideIssuesPanel() {
+            document.getElementById('issues-area').style.display = 'none';
+        }
+        
+        // Save table edits
+        function saveTableEdits() {
+            const inputs = document.querySelectorAll('#data-table .cell-edit');
+            inputs.forEach(input => {
+                const row = parseInt(input.dataset.row);
+                const col = parseInt(input.dataset.col);
+                tableData[row + 1][col] = input.value;
+            });
+            
+            refreshTable();
+            convertTo(currentFormat);
+            hideEditableTable();
+        }
+        
+        // Add new row
+        function addNewRow() {
+            const newRow = tableData[0].map(() => '');
+            tableData.push(newRow);
+            showEditableTable();
+        }
+        
+        // Delete row
+        function deleteRow(rowIndex) {
+            tableData.splice(rowIndex + 1, 1);
+            refreshTable();
+            convertTo(currentFormat);
+        }
+        
+        // Delete column
+        function deleteColumn(colIndex) {
+            if (confirm(`Delete column "${tableData[0][colIndex]}"?`)) {
+                tableData.forEach(row => row.splice(colIndex, 1));
+                refreshTable();
+                convertTo(currentFormat);
+                showEditableTable(); // Refresh the table view
+            }
+        }
+        
+        // Set cell value
+        function setCellValue(rowIndex, colIndex, value) {
+            tableData[rowIndex + 1][colIndex] = value;
+            refreshTable();
+            convertTo(currentFormat);
+            hideIssuesPanel();
+        }
+        
+        // Fix date format
+        function fixDateFormat(rowIndex, colIndex) {
+            const value = tableData[rowIndex + 1][colIndex];
+            if (value.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+                tableData[rowIndex + 1][colIndex] = value.split('/').reverse().join('-');
+            }
+            refreshTable();
+            convertTo(currentFormat);
+            hideIssuesPanel();
+        }
+        
+        // Shareable link
+        function generateShareLink() {
+            const dataStr = JSON.stringify(tableData);
+            const encoded = btoa(encodeURIComponent(dataStr));
+            const link = `${window.location.href.split('#')[0]}#data=${encoded}`;
+            
+            navigator.clipboard.writeText(link).then(() => {
+                alert("Shareable link copied to clipboard!\n\n" + link);
+            });
+        }
+        
+        // Load shared data
+        function loadSharedData() {
+            if (window.location.hash.includes('data=')) {
+                const encoded = window.location.hash.split('data=')[1];
+                const decoded = decodeURIComponent(atob(encoded));
+                parseTable(JSON.parse(decoded));
+            }
+        }
+        
+        // Copy to clipboard
+        function copyToClipboard() {
+            const output = document.getElementById('output-area').textContent;
+            navigator.clipboard.writeText(output).then(() => {
+                alert("Copied to clipboard!");
+            });
+        }
+        
+        // Dark mode toggle
+        function toggleDarkMode() {
+            document.body.classList.toggle('dark-mode');
+        }
+        
+        // Refresh table display
+        function refreshTable() {
+            document.getElementById('input-area').textContent = 
+                tableData.map(row => row.join('\t')).join('\n');
+        }
+        
+        // Guess table name
+        function guessTableName() {
+            const headers = tableData[0] || [];
+            if (headers.some(h => h.toLowerCase().includes('email'))) return 'users';
+            if (headers.some(h => h.toLowerCase().includes('order'))) return 'orders';
+            return 'table_name';
+        }
+        
+        // Initialize
+        loadSharedData();
+    </script>
+</body>
+</html>

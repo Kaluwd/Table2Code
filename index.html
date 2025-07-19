@@ -269,15 +269,20 @@
         <h1>Table2Code</h1>
         <p>Paste any table (Excel, Sheets, web) and convert to developer formats:</p>
         
-        <div 
-  id="input-area" 
-  contenteditable="true" 
-  placeholder="Paste your table here (e.g. from Excel)..."
-  style="white-space: pre"
->Paste your table here (e.g. from Excel)...
-id  name    email           join_date
-1   miki    miki@dev.com    2023-01-15
-2   yishak  yishak@dev.com  2023-02-20</div>
+        <div id="input-container" style="position: relative;">
+  <div 
+    id="input-area" 
+    contenteditable="true" 
+    style="white-space: pre; min-height: 120px; border: 2px dashed #cbd5e1; padding: 12px;"
+    aria-label="Paste your table here"
+  ></div>
+  <div id="placeholder" style="position: absolute; top: 12px; left: 12px; color: #64748b; pointer-events: none;">
+    Paste your table here (e.g. from Excel)...
+    <span style="display: block; margin-top: 8px;">id  name    email           join_date</span>
+    <span style="display: block;">1   miki    miki@dev.com    2023-01-15</span>
+    <span style="display: block;">2   yishak  yishak@dev.com  2023-02-20</span>
+  </div>
+</div>
         
         <div class="section-title">Convert To:</div>
         <div class="btn-group">

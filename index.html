@@ -5,17 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Table2Code - Smart Table Converter</title>
     <meta name="description" content="Convert Excel/CSV data to SQL, TypeScript, JSON and more with one click. Perfect for developers!">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #3b82f6;
+            --primary-dark: #2563eb;
             --dark: #1e293b;
             --light: #f8fafc;
             --dark-bg: #0f172a;
             --dark-container: #1e293b;
             --dark-output: #334155;
+            --border-color: #e2e8f0;
+            --border-dark: #475569;
         }
         * {
             box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -24,7 +32,8 @@
             color: var(--dark);
             margin: 0;
             padding: 15px;
-            transition: all 0.3s;
+            transition: all 0.3s ease;
+            min-height: 100vh;
         }
         .container {
             background: white;
@@ -34,35 +43,65 @@
             transition: all 0.3s;
             max-width: 100%;
             overflow: hidden;
+            margin: 0 auto;
         }
         h1 {
             color: var(--primary);
             font-size: clamp(1.5rem, 5vw, 2rem);
             margin-top: 0;
+            margin-bottom: 10px;
+        }
+        #input-container {
+            position: relative;
+            margin-bottom: 15px;
         }
         #input-area {
             min-height: 120px;
-            border: 2px dashed #cbd5e1;
+            border: 2px dashed var(--border-color);
             padding: 12px;
-            margin-bottom: 15px;
             outline: none;
             background: white;
             color: var(--dark);
             transition: all 0.3s;
             width: 100%;
             font-family: inherit;
+            white-space: pre;
+            border-radius: 6px;
+            line-height: 1.5;
+        }
+        #placeholder {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            right: 12px;
+            color: #64748b;
+            pointer-events: none;
+            background: white;
+            padding: 4px;
+            line-height: 1.5;
+        }
+        #placeholder div:first-child {
+            margin-bottom: 8px;
+        }
+        .placeholder-example {
+            font-family: 'Fira Code', monospace, Menlo, Consolas;
+            color: #94a3b8;
+            font-size: 0.9em;
         }
         #output-area {
             background: #f8fafc;
-            border: 1px solid #e2e8f0;
+            border: 1px solid var(--border-color);
             padding: 12px;
             border-radius: 5px;
             white-space: pre-wrap;
             font-family: 'Fira Code', monospace, Menlo, Consolas;
             overflow-x: auto;
-            color: #1e293b;
+            color: var(--dark);
             transition: all 0.3s;
             font-size: 14px;
+            min-height: 100px;
+            max-height: 400px;
+            overflow-y: auto;
         }
         .btn-group {
             display: flex;
@@ -82,22 +121,36 @@
             flex: 1 0 auto;
             white-space: nowrap;
             text-align: center;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
         }
         .btn:hover {
-            opacity: 0.9;
+            background: var(--primary-dark);
         }
         .btn-secondary {
             background: #e2e8f0;
             color: var(--dark);
         }
+        .btn-secondary:hover {
+            background: #cbd5e1;
+        }
         .btn-warning {
             background: #f59e0b;
+        }
+        .btn-warning:hover {
+            background: #d97706;
         }
         .btn-danger {
             background: #ef4444;
         }
+        .btn-danger:hover {
+            background: #dc2626;
+        }
         .btn-success {
             background: #10b981;
+        }
+        .btn-success:hover {
+            background: #059669;
         }
         .btn-sm {
             padding: 6px 10px;
@@ -114,12 +167,15 @@
         .dark-mode #input-area {
             background: var(--dark-container);
             color: white;
-            border-color: #475569;
+            border-color: var(--border-dark);
+        }
+        .dark-mode #placeholder {
+            background: var(--dark-container);
         }
         .dark-mode #output-area {
             background: var(--dark-output);
             color: #e2e8f0;
-            border-color: #475569;
+            border-color: var(--border-dark);
         }
         .section-title {
             font-weight: 600;
@@ -158,6 +214,14 @@
             display: none;
             margin-top: 15px;
             overflow-x: auto;
+            background: white;
+            border-radius: 6px;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .dark-mode #editable-table {
+            background: var(--dark-container);
+            border-color: var(--border-dark);
         }
         #data-table {
             width: 100%;
@@ -166,22 +230,23 @@
             font-size: 14px;
         }
         #data-table th, #data-table td {
-            border: 1px solid #ddd;
+            border: 1px solid var(--border-color);
             padding: 8px;
             text-align: left;
             position: relative;
+        }
+        .dark-mode #data-table th,
+        .dark-mode #data-table td {
+            border-color: var(--border-dark);
         }
         #data-table th {
             background-color: #f1f5f9;
             position: sticky;
             top: 0;
+            font-weight: 600;
         }
         .dark-mode #data-table th {
             background-color: #334155;
-        }
-        .dark-mode #data-table th,
-        .dark-mode #data-table td {
-            border-color: #475569;
         }
         .cell-edit {
             width: 100%;
@@ -189,20 +254,22 @@
             padding: 4px;
             font-family: inherit;
             background: transparent;
+            color: inherit;
         }
-        .dark-mode .cell-edit {
-            color: white;
+        .cell-edit:focus {
+            outline: 2px solid var(--primary);
+            border-radius: 3px;
         }
         .footer {
             margin-top: 30px;
             padding-top: 15px;
-            border-top: 1px solid #e2e8f0;
+            border-top: 1px solid var(--border-color);
             text-align: center;
             font-size: 13px;
             color: #64748b;
         }
         .dark-mode .footer {
-            border-color: #475569;
+            border-color: var(--border-dark);
             color: #94a3b8;
         }
         .footer a {
@@ -248,6 +315,7 @@
             .btn {
                 padding: 8px;
                 font-size: 13px;
+                min-width: calc(50% - 4px);
             }
             #input-area {
                 min-height: 100px;
@@ -261,6 +329,9 @@
             .container {
                 padding: 15px;
             }
+            .btn-group {
+                gap: 6px;
+            }
         }
     </style>
 </head>
@@ -269,23 +340,21 @@
         <h1>Table2Code</h1>
         <p>Paste any table (Excel, Sheets, web) and convert to developer formats:</p>
         
- <div id="input-container" style="position: relative;">
-  <div 
-    id="input-area" 
-    contenteditable="true" 
-    style="white-space: pre; min-height: 120px; border: 2px dashed #cbd5e1; padding: 12px;"
-    aria-label="Paste table data here"
-  ></div>
-  <div id="placeholder" style="position: absolute; top: 12px; left: 12px; right: 12px; color: #64748b; pointer-events: none; background: white; padding: 4px;">
-    <div style="margin-bottom: 8px;">Paste your table here (e.g. from Excel)...</div>
-    <div style="font-family: monospace; color: #94a3b8; font-size: 0.9em;">
-      <div>id  name    email           join_date</div>
-      <div>1   miki    miki@dev.com    2023-01-15</div>
-      <div>2   yishak  yishak@dev.com  2023-02-20</div>
-    </div>
-  </div>
-</div>
-
+        <div id="input-container">
+            <div 
+                id="input-area" 
+                contenteditable="true"
+                aria-label="Paste table data here"
+            ></div>
+            <div id="placeholder">
+                <div>Paste your table here (e.g. from Excel)...</div>
+                <div class="placeholder-example">
+                    <div>id  name    email           join_date</div>
+                    <div>1   miki    miki@dev.com    2023-01-15</div>
+                    <div>2   yishak  yishak@dev.com  2023-02-20</div>
+                </div>
+            </div>
+        </div>
         
         <div class="section-title">Convert To:</div>
         <div class="btn-group">
@@ -324,19 +393,18 @@
                 <button class="btn btn-success btn-sm" onclick="saveTableEdits()">💾 Save</button>
                 <button class="btn btn-danger btn-sm" onclick="hideEditableTable()">❌ Cancel</button>
                 <button class="btn btn-sm" onclick="addNewRow()">➕ Add Row</button>
+                <button class="btn btn-sm" onclick="addNewColumn()">➕ Add Column</button>
             </div>
             <table id="data-table"></table>
         </div>
     </div>
     
     <div class="footer">
-        <div>Table2Code v1.0.0</div>
-        <div>Developed by <a href="#" id="developer-link">Kws</a></div>
+        <div>Table2Code v1.1.0</div>
+        <div>Developed by <a href="https://aps-kappa.vercel.app/" id="developer-link">Kws</a></div>
         <div class="footer-links">
-<!--             <a href="#" onclick="showAbout()">About</a>
+            <a href="#" onclick="showAbout()">About</a>
             <a href="#" onclick="showPrivacy()">Privacy</a>
-            <a href="#" onclick="showTerms()">Terms</a> -->
-<!--             <a href="#" target="_blank">GitHub</a> -->
         </div>
         <div>© 2025 All rights reserved</div>
     </div>

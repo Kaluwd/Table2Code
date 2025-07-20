@@ -568,7 +568,7 @@
         }
         
         // Set developer link (replace with your actual link)
-        document.getElementById('developer-link').href = "https://vercel.com/kalus-projects-806c524a/aps";
+        document.getElementById('developer-link').href = "https://aps-kappa.vercel.app/";
         
         // Initialize
         loadSharedData();

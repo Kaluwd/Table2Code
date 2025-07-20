@@ -71,7 +71,203 @@ function convertTo(format) {
     
     document.getElementById('output-area').textContent = output;
 }
+// Add to your existing convertTo function
+function convertTo(format) {
+    if (tableData.length === 0) {
+        document.getElementById('output-area').textContent = "No data to convert. Paste your table first.";
+        return;
+    }
+    
+    currentFormat = format;
+    let output;
+    
+    switch(format) {
+        // ... existing cases ...
+        case 'chart':
+            generateChart();
+            return;
+        // ... rest of your cases ...
+    }
+    
+    document.getElementById('output-area').textContent = output;
+}
 
+// Chart.js initialization
+let dataChart = null;
+
+function generateChart() {
+    if (tableData.length < 2) {
+        alert("Not enough data to generate a chart. Need at least one data row.");
+        return;
+    }
+
+    const modal = document.getElementById('chart-modal');
+    modal.style.display = 'block';
+
+    // Populate axis selectors
+    const xAxisSelect = document.getElementById('x-axis');
+    const yAxisSelect = document.getElementById('y-axis');
+    xAxisSelect.innerHTML = '';
+    yAxisSelect.innerHTML = '';
+
+    tableData[0].forEach((header, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = header;
+        xAxisSelect.appendChild(option.cloneNode(true));
+        yAxisSelect.appendChild(option);
+    });
+
+    // Set default y-axis to the first numeric column if available
+    for (let i = 0; i < tableData[0].length; i++) {
+        if (!isNaN(tableData[1][i]) {
+            yAxisSelect.value = i;
+            break;
+        }
+    }
+
+    updateChart();
+}
+
+function updateChart() {
+    const chartType = document.getElementById('chart-type').value;
+    const xAxisIndex = parseInt(document.getElementById('x-axis').value);
+    const yAxisIndex = parseInt(document.getElementById('y-axis').value);
+    
+    const ctx = document.getElementById('data-chart').getContext('2d');
+    
+    // Destroy previous chart if exists
+    if (dataChart) {
+        dataChart.destroy();
+    }
+    
+    // Prepare data
+    const labels = [];
+    const dataValues = [];
+    
+    for (let i = 1; i < tableData.length; i++) {
+        if (tableData[i][xAxisIndex] && tableData[i][yAxisIndex]) {
+            labels.push(tableData[i][xAxisIndex]);
+            const value = parseFloat(tableData[i][yAxisIndex]) || 0;
+            dataValues.push(value);
+        }
+    }
+    
+    const backgroundColors = generateColors(labels.length);
+    
+    dataChart = new Chart(ctx, {
+        type: chartType,
+        data: {
+            labels: labels,
+            datasets: [{
+                label: tableData[0][yAxisIndex],
+                data: dataValues,
+                backgroundColor: backgroundColors,
+                borderColor: chartType === 'line' ? '#3b82f6' : backgroundColors.map(c => darkenColor(c, 20)),
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: `${tableData[0][yAxisIndex]} by ${tableData[0][xAxisIndex]}`,
+                    font: {
+                        size: 16
+                    }
+                },
+                legend: {
+                    position: chartType === 'pie' || chartType === 'doughnut' ? 'right' : 'top',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.raw}`;
+                        }
+                    }
+                }
+            },
+            scales: chartType !== 'pie' && chartType !== 'doughnut' ? {
+                y: {
+                    beginAtZero: true
+                }
+            } : {}
+        }
+    });
+}
+
+function closeChartModal() {
+    document.getElementById('chart-modal').style.display = 'none';
+}
+
+function downloadChart() {
+    if (!dataChart) return;
+    
+    const link = document.createElement('a');
+    link.download = `${tableData[0][document.getElementById('y-axis').value]}_chart.png`;
+    link.href = document.getElementById('data-chart').toDataURL('image/png');
+    link.click();
+}
+
+function downloadChartSVG() {
+    if (!dataChart) return;
+    
+    // Chart.js doesn't natively support SVG export, so we'll use a workaround
+    const canvas = document.getElementById('data-chart');
+    const img = new Image();
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    const svgImg = document.createElementNS('http://www.w3.org/2000/svg', 'image');
+    
+    img.onload = function() {
+        svg.setAttribute('width', canvas.width);
+        svg.setAttribute('height', canvas.height);
+        svgImg.setAttribute('width', canvas.width);
+        svgImg.setAttribute('height', canvas.height);
+        svgImg.setAttributeNS('http://www.w3.org/1999/xlink', 'href', img.src);
+        svg.appendChild(svgImg);
+        
+        const serializer = new XMLSerializer();
+        const svgStr = serializer.serializeToString(svg);
+        
+        const link = document.createElement('a');
+        link.download = `${tableData[0][document.getElementById('y-axis').value]}_chart.svg`;
+        link.href = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
+        link.click();
+    };
+    
+    img.src = canvas.toDataURL('image/png');
+}
+
+// Helper functions for charts
+function generateColors(count) {
+    const colors = [];
+    const hueStep = 360 / count;
+    
+    for (let i = 0; i < count; i++) {
+        const hue = i * hueStep;
+        colors.push(`hsla(${hue}, 70%, 60%, 0.7)`);
+    }
+    
+    return colors;
+}
+
+function darkenColor(color, percent) {
+    // Convert HSLA to darker version
+    const match = color.match(/hsla\((\d+),\s*([\d.]+)%,\s*([\d.]+)%/);
+    if (match) {
+        const hue = parseInt(match[1]);
+        const saturation = parseFloat(match[2]);
+        let lightness = parseFloat(match[3]);
+        lightness = Math.max(0, lightness - percent);
+        return `hsla(${hue}, ${saturation}%, ${lightness}%, 0.7)`;
+    }
+    return color;
+}
+
+// Add Chart.js library to your head (or before the closing body tag)
+// <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 // SQL Generator (basic)
 function generateSQL() {
     const headers = tableData[0];

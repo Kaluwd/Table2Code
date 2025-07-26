@@ -76,6 +76,8 @@ function setupEventListeners() {
     document.getElementById('cancel-table-btn').addEventListener('click', hideEditableTable);
     document.getElementById('add-row-btn').addEventListener('click', addNewRow);
     document.getElementById('add-col-btn').addEventListener('click', addNewColumn);
+    document.getElementById('delete-row-btn').addEventListener('click', deleteSelectedRow);
+    document.getElementById('delete-col-btn').addEventListener('click', deleteSelectedColumn);
 
     // Chart modal
     document.getElementById('close-chart-btn').addEventListener('click', closeChartModal);
@@ -86,198 +88,211 @@ function setupEventListeners() {
     // Footer links
     document.getElementById('about-link').addEventListener('click', showAbout);
     document.getElementById('privacy-link').addEventListener('click', showPrivacy);
+    document.getElementById('feedback-link').addEventListener('click', showFeedback);
+    document.getElementById('github-link').addEventListener('click', () => window.open('https://github.com/yourusername/table2code', '_blank'));
+    document.getElementById('developer-link').addEventListener('click', showDeveloperInfo);
     document.getElementById('close-modal-btn').addEventListener('click', () => {
         document.getElementById('info-modal').style.display = 'none';
     });
 }
-// function processFile(file) {
-//     const previewContainer = document.getElementById('file-preview');
-//     const previewName = document.getElementById('file-preview-name');
-//     const fileTypeElement = document.getElementById('file-type');
-//     const fileSizeElement = document.getElementById('file-size');
-//     const fileModifiedElement = document.getElementById('file-last-modified');
-//     const fileContentElement = document.getElementById('file-text-content');
-//     const fileImageElement = document.getElementById('file-image-content');
-//     const pageControls = document.getElementById('page-controls');
-    
-//     // Display file info
-//     previewName.textContent = file.name;
-//     fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
-//     fileSizeElement.textContent = formatFileSize(file.size);
-//     fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
-    
-//     // Hide image and clear text by default
-//     fileImageElement.style.display = 'none';
-//     fileContentElement.textContent = '';
-//     pageControls.style.display = 'none';
-    
-//     // Show preview container
-//     previewContainer.style.display = 'block';
-    
-//     // Process based on file type
-//     const fileType = file.type;
-//     const fileExt = file.name.split('.').pop().toLowerCase();
-    
-//     if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
-//         // Text-based files
-//         const reader = new FileReader();
-//         reader.onload = function(e) {
-//             fileContentElement.textContent = e.target.result;
-            
-//             // If CSV, try to parse it
-//             if (fileExt === 'csv') {
-//                 parseTable(e.target.result);
-//             }
-//         };
-//         reader.readAsText(file);
-//     } else if (fileExt === 'pdf') {
-//         // PDF files
-//         extractTextFromPdf(file, fileContentElement);
-//     } else if (fileType.includes('image/')) {
-//         // Image files
-//         const reader = new FileReader();
-//         reader.onload = function(e) {
-//             fileImageElement.src = e.target.result;
-//             fileImageElement.style.display = 'block';
-//         };
-//         reader.readAsDataURL(file);
-//     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
-//         // Excel files
-//         parseExcelFile(file);
-//     } else if (fileExt === 'docx') {
-//         // Word documents (DOCX)
-//         extractTextFromDocx(file, fileContentElement);
-//     } else if (fileExt === 'doc') {
-//         fileContentElement.textContent = "Old .doc format not supported. Please save as .docx";
-//     } else {
-//         // Unknown file type
-//         fileContentElement.textContent = "File type not supported for preview.";
-//     }
-// }
+
 function processFile(file) {
-  const previewContainer = document.getElementById('file-preview');
-  const previewName = document.getElementById('file-preview-name');
-  const fileTypeElement = document.getElementById('file-type');
-  const fileSizeElement = document.getElementById('file-size');
-  const fileModifiedElement = document.getElementById('file-last-modified');
-  const fileContentElement = document.getElementById('file-text-content');
-  const fileImageElement = document.getElementById('file-image-content');
-  const pageControls = document.getElementById('page-controls');
-  
-  // Reset preview area
-  previewName.textContent = file.name;
-  fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
-  fileSizeElement.textContent = formatFileSize(file.size);
-  fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
-  fileImageElement.style.display = 'none';
-  fileContentElement.innerHTML = ''; // Changed to innerHTML for DOC support
-  pageControls.style.display = 'none';
-  previewContainer.style.display = 'block';
-
-  const fileExt = file.name.split('.').pop().toLowerCase();
-
-  // File type handling
-  if (fileExt === 'pdf') {
-    renderPdfPreview(file, fileContentElement);
-  } 
-  else if (fileExt === 'docx') {
-    extractTextFromDocx(file, fileContentElement);
-  }
-  else if (fileExt === 'doc') {
-    extractTextFromDoc(file, fileContentElement);
-  }
-  else if (fileExt === 'xlsx' || fileExt === 'xls') {
-    parseExcelFile(file);
-  }
-  else if (file.type.includes('image/')) {
-    renderImagePreview(file, fileImageElement);
-  }
-  else {
-    // Handle text files (CSV, TXT, etc)
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      fileContentElement.textContent = e.target.result;
-      if (fileExt === 'csv') parseTable(e.target.result);
-    };
-    reader.readAsText(file);
-  }
-}
-function renderPdfPreview(file, container) {
-  container.innerHTML = '<div class="pdf-viewer" style="height:400px;overflow:auto;border:1px solid #eee;"></div>';
-  const viewer = container.querySelector('.pdf-viewer');
-  
-  const reader = new FileReader();
-  reader.onload = function() {
-    const typedarray = new Uint8Array(this.result);
+    const previewContainer = document.getElementById('file-preview');
+    const previewName = document.getElementById('file-preview-name');
+    const fileTypeElement = document.getElementById('file-type');
+    const fileSizeElement = document.getElementById('file-size');
+    const fileModifiedElement = document.getElementById('file-last-modified');
+    const fileContentElement = document.getElementById('file-text-content');
+    const fileImageElement = document.getElementById('file-image-content');
+    const pageControls = document.getElementById('page-controls');
     
-    // Render PDF
-    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-      // Show first page as preview
-      pdf.getPage(1).then(function(page) {
+    // Display file info
+    previewName.textContent = file.name;
+    fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
+    fileSizeElement.textContent = formatFileSize(file.size);
+    fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
+    
+    // Hide image and clear text by default
+    fileImageElement.style.display = 'none';
+    fileContentElement.textContent = '';
+    pageControls.style.display = 'none';
+    
+    // Show preview container
+    previewContainer.style.display = 'block';
+    
+    // Process based on file type
+    const fileType = file.type;
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    
+    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
+        // Text-based files
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            fileContentElement.textContent = e.target.result;
+            
+            // If CSV, try to parse it
+            if (fileExt === 'csv') {
+                parseTable(e.target.result);
+            }
+        };
+        reader.readAsText(file);
+    } else if (fileExt === 'pdf') {
+        // PDF files
+        extractTextFromPdf(file, fileContentElement);
+    } else if (fileType.includes('image/')) {
+        // Image files
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            fileImageElement.src = e.target.result;
+            fileImageElement.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+        // Excel files
+        parseExcelFile(file);
+    } else if (fileExt === 'docx') {
+        // Word documents (DOCX)
+        extractTextFromDocx(file, fileContentElement);
+    } else if (fileExt === 'doc') {
+        fileContentElement.textContent = "Old .doc format not supported. Please save as .docx";
+    } else {
+        // Unknown file type
+        fileContentElement.textContent = "File type not supported for preview.";
+    }
+}
+
+function extractTextFromPdf(file, container) {
+    container.textContent = "Loading PDF...";
+    
+    const reader = new FileReader();
+    reader.onload = function() {
+        const typedarray = new Uint8Array(this.result);
+        
+        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+            let text = "";
+            const totalPages = pdf.numPages;
+            
+            // Show page controls if multi-page
+            if (totalPages > 1) {
+                const pageControls = document.getElementById('page-controls');
+                pageControls.style.display = 'flex';
+                const pageButtons = document.getElementById('page-buttons');
+                pageButtons.innerHTML = '';
+                
+                for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+                    const btn = document.createElement('button');
+                    btn.className = 'page-btn';
+                    if (i === 1) btn.classList.add('active');
+                    btn.textContent = i;
+                    btn.onclick = () => renderPdfPage(pdf, i, container);
+                    pageButtons.appendChild(btn);
+                }
+            }
+            
+            // Render first page
+            renderPdfPage(pdf, 1, container);
+        }).catch(function(error) {
+            container.textContent = "Error loading PDF: " + error.message;
+        });
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+function renderPdfPage(pdf, pageNum, container) {
+    container.textContent = "Loading page " + pageNum + "...";
+    
+    // Update active page button
+    document.querySelectorAll('.page-btn').forEach(btn => {
+        btn.classList.toggle('active', parseInt(btn.textContent) === pageNum);
+    });
+    
+    pdf.getPage(pageNum).then(function(page) {
         const viewport = page.getViewport({ scale: 1.0 });
+        
+        // Create canvas for rendering
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
-        viewer.appendChild(canvas);
         
+        // Clear container and add canvas
+        container.innerHTML = '';
+        container.appendChild(canvas);
+        
+        // Render PDF page to canvas
         page.render({
-          canvasContext: context,
-          viewport: viewport
-        });
-      });
-      
-      // Also extract text
-      let fullText = "";
-      for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
-        pdf.getPage(i).then(function(page) {
-          return page.getTextContent();
+            canvasContext: context,
+            viewport: viewport
+        }).promise.then(function() {
+            // Extract text
+            return page.getTextContent();
         }).then(function(textContent) {
-          fullText += textContent.items.map(item => item.str).join(' ') + "\n\n";
-          if (i === Math.min(pdf.numPages, 3)) {
-            // Add text extraction below preview
+            // Add text below the rendered page
             const textDiv = document.createElement('div');
             textDiv.style.marginTop = '20px';
             textDiv.style.padding = '10px';
             textDiv.style.background = '#f5f5f5';
-            textDiv.textContent = "Extracted Text:\n" + fullText;
-            viewer.appendChild(textDiv);
-          }
+            textDiv.textContent = textContent.items.map(item => item.str).join(' ');
+            container.appendChild(textDiv);
+            
+            // Try to parse as table if it looks tabular
+            const text = textDiv.textContent;
+            if (text.match(/\w+\s{2,}\w+/)) {
+                parseTable(text);
+            }
         });
-      }
+    }).catch(function(error) {
+        container.textContent = "Error rendering PDF page: " + error.message;
     });
-  };
-  reader.readAsArrayBuffer(file);
 }
-function extractTextFromDoc(file, container) {
-  container.textContent = "Extracting text from DOC file...";
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      // Convert binary to base64
-      const base64 = btoa(
-        new Uint8Array(e.target.result)
-          .reduce((data, byte) => data + String.fromCharCode(byte), '')
-      );
-      
-      // Use docx2html which has basic DOC support
-      docx2html(e.target.result)
-        .then(html => {
-          container.innerHTML = html;
-          // Extract plain text version too
-          const text = container.textContent || container.innerText;
-          parseTableIfTabular(text);
-        })
-        .catch(err => {
-          container.textContent = "Error processing DOC file. Full error: " + err.message;
-        });
-    } catch (err) {
-      container.textContent = "This DOC file format isn't supported. Try saving as DOCX.";
-    }
-  };
-  reader.readAsArrayBuffer(file);
+
+function parseExcelFile(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array' });
+            
+            // Get first sheet
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            
+            // Convert to JSON
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+            
+            // Convert to tab-delimited text for display
+            let textContent = jsonData.map(row => row.join('\t')).join('\n');
+            
+            document.getElementById('file-text-content').textContent = textContent;
+            parseTable(textContent);
+        } catch (error) {
+            document.getElementById('file-text-content').textContent = "Error parsing Excel file: " + error.message;
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }
+
+function extractTextFromDocx(file, container) {
+    container.textContent = "Extracting text from DOCX file...";
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        mammoth.extractRawText({ arrayBuffer: e.target.result })
+            .then(function(result) {
+                container.textContent = result.value;
+                
+                // Try to parse as table if it looks tabular
+                if (result.value.match(/\w+\s{2,}\w+/)) {
+                    parseTable(result.value);
+                }
+            })
+            .catch(function(error) {
+                container.textContent = "Error extracting text from DOCX: " + error.message;
+            });
+    };
+    reader.readAsArrayBuffer(file);
+}
+
 // Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
@@ -315,7 +330,7 @@ function updateFileContent() {
         });
         
         uploadedFiles[currentFileIndex] = newFile;
-        alert("File content updated!");
+        showToast("File content updated!", "success");
         
         if (originalFile.name.split('.').pop().toLowerCase() === 'csv') {
             parseTable(updatedContent);
@@ -536,7 +551,7 @@ function cleanData() {
     );
     refreshTable();
     convertTo(currentFormat);
-    alert("Common issues fixed: NULLs, dates, whitespace");
+    showToast("Common issues fixed: NULLs, dates, whitespace", "success");
 }
 
 // Analyze data for issues
@@ -850,6 +865,30 @@ function addNewColumn() {
     showEditableTable();
 }
 
+// Delete selected row
+function deleteSelectedRow() {
+    const selectedRow = document.querySelector('#data-table tr[style*="background-color"]');
+    if (selectedRow) {
+        const rowIndex = Array.from(document.querySelectorAll('#data-table tr')).indexOf(selectedRow) - 1;
+        if (rowIndex >= 0) {
+            deleteRow(rowIndex);
+        }
+    } else {
+        showToast("Please highlight a row to delete", "warning");
+    }
+}
+
+// Delete selected column
+function deleteSelectedColumn() {
+    const selectedCell = document.querySelector('#data-table td[style*="background-color"]');
+    if (selectedCell) {
+        const colIndex = Array.from(selectedCell.parentNode.children).indexOf(selectedCell);
+        deleteColumn(colIndex);
+    } else {
+        showToast("Please highlight a column to delete", "warning");
+    }
+}
+
 // Delete row
 function deleteRow(rowIndex) {
     if (tableData.length > rowIndex + 1) {
@@ -899,7 +938,7 @@ function fixDateFormat(rowIndex, colIndex) {
 // Shareable link
 function generateShareLink() {
     if (tableData.length === 0) {
-        alert("No data to share. Please paste your table first.");
+        showToast("No data to share. Please paste your table first.", "warning");
         return;
     }
     
@@ -908,7 +947,7 @@ function generateShareLink() {
     const link = `${window.location.href.split('#')[0]}#data=${encoded}`;
     
     navigator.clipboard.writeText(link).then(() => {
-        alert("Shareable link copied to clipboard!\n\n" + link);
+        showToast("Shareable link copied to clipboard!", "success");
     }).catch(err => {
         console.error("Failed to copy link: ", err);
         prompt("Copy this link manually:", link);
@@ -936,12 +975,12 @@ function loadSharedData() {
 function copyToClipboard() {
     const output = document.getElementById('output-area').textContent;
     if (!output || output === "Your converted code will appear here..." || output.includes("No data to convert")) {
-        alert("Nothing to copy. Convert some data first.");
+        showToast("Nothing to copy. Convert some data first.", "warning");
         return;
     }
     
     navigator.clipboard.writeText(output).then(() => {
-        alert("Copied to clipboard!");
+        showToast("Copied to clipboard!", "success");
     }).catch(err => {
         console.error("Failed to copy: ", err);
         const textarea = document.createElement('textarea');
@@ -950,7 +989,7 @@ function copyToClipboard() {
         textarea.select();
         document.execCommand('copy');
         document.body.removeChild(textarea);
-        alert("Output copied to clipboard!");
+        showToast("Output copied to clipboard!", "success");
     });
 }
 
@@ -958,12 +997,19 @@ function copyToClipboard() {
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
+    const darkModeBtn = document.getElementById('dark-mode-btn');
+    if (document.body.classList.contains('dark-mode')) {
+        darkModeBtn.innerHTML = '<span>☀️ Light Mode</span>';
+    } else {
+        darkModeBtn.innerHTML = '<span>🌙 Dark Mode</span>';
+    }
 }
 
 // Check for saved dark mode preference
 function checkDarkModePreference() {
     if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark-mode');
+        document.getElementById('dark-mode-btn').innerHTML = '<span>☀️ Light Mode</span>';
     }
 }
 
@@ -985,7 +1031,7 @@ function guessTableName() {
 // Chart functions
 function generateChart() {
     if (tableData.length < 2) {
-        alert("Not enough data to generate a chart. Need at least one data row.");
+        showToast("Not enough data to generate a chart. Need at least one data row.", "warning");
         return;
     }
 
@@ -1152,6 +1198,19 @@ function darkenColor(color, percent) {
     return color;
 }
 
+// Show toast notification
+function showToast(message, type = 'success') {
+    const toast = document.getElementById('toast');
+    toast.textContent = message;
+    toast.className = 'toast';
+    toast.classList.add(type);
+    toast.classList.add('show');
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+    }, 3000);
+}
+
 // About modal
 function showAbout() {
     document.getElementById('modal-title').textContent = 'About Table2Code';
@@ -1180,6 +1239,31 @@ function showPrivacy() {
             <li>We don't store your data on any servers</li>
             <li>Share links are encoded in the URL (optional)</li>
             <li>No cookies or tracking</li>
+        </ul>
+    `;
+    document.getElementById('info-modal').style.display = 'flex';
+}
+
+// Feedback modal
+function showFeedback() {
+    document.getElementById('modal-title').textContent = 'Feedback';
+    document.getElementById('modal-content').innerHTML = `
+        <p>We'd love to hear your feedback!</p>
+        <p>Please email us at <a href="mailto:feedback@table2code.com">feedback@table2code.com</a></p>
+        <p>Or open an issue on our <a href="https://github.com/yourusername/table2code/issues" target="_blank">GitHub repository</a></p>
+    `;
+    document.getElementById('info-modal').style.display = 'flex';
+}
+
+// Developer info modal
+function showDeveloperInfo() {
+    document.getElementById('modal-title').textContent = 'About the Developer';
+    document.getElementById('modal-content').innerHTML = `
+        <p>Table2Code was created by Kws, a full-stack developer passionate about building useful tools.</p>
+        <p>You can find more projects at:</p>
+        <ul>
+            <li><a href="https://github.com/yourusername" target="_blank">GitHub</a></li>
+            <li><a href="https://linkedin.com/in/yourprofile" target="_blank">LinkedIn</a></li>
         </ul>
     `;
     document.getElementById('info-modal').style.display = 'flex';

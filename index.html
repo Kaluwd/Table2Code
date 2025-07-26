@@ -1,1037 +1,670 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Table2Code - Smart Table Converter</title>
-
     <meta name="description" content="Convert Excel/CSV data to SQL, TypeScript, JSON and more with one click. Perfect for developers!">
-
     <link rel="preconnect" href="https://fonts.googleapis.com">
-
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
-
     <script defer data-domain="table2-code-8hmy.vercel.app" src="https://plausible.io/js/script.js"></script>
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
     <style>
-
         :root {
-
             --primary: #3b82f6;
-
             --primary-dark: #2563eb;
-
             --dark: #1e293b;
-
             --light: #f8fafc;
-
             --dark-bg: #0f172a;
-
             --dark-container: #1e293b;
-
             --dark-output: #334155;
-
             --border-color: #e2e8f0;
-
             --border-dark: #475569;
-
         }
-
         * {
-
             box-sizing: border-box;
-
             margin: 0;
-
             padding: 0;
-
         }
-
         body {
-
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
-
             line-height: 1.6;
-
             background-color: #f1f5f9;
-
             color: var(--dark);
-
             margin: 0;
-
             padding: 15px;
-
             transition: all 0.3s ease;
-
             min-height: 100vh;
-
         }
-
         .container {
-
             background: white;
-
             border-radius: 10px;
-
             padding: 20px;
-
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-
             transition: all 0.3s;
-
             max-width: 100%;
-
             overflow: hidden;
-
             margin: 0 auto;
-
         }
-
         h1 {
-
             color: var(--primary);
-
             font-size: clamp(1.5rem, 5vw, 2rem);
-
             margin-top: 0;
-
             margin-bottom: 10px;
-
         }
-
         #input-container {
-
             position: relative;
-
             margin-bottom: 15px;
-
         }
-
         #input-area {
-
             min-height: 120px;
-
             border: 2px dashed var(--border-color);
-
             padding: 12px;
-
             outline: none;
-
             background: white;
-
             color: var(--dark);
-
             transition: all 0.3s;
-
             width: 100%;
-
             font-family: inherit;
-
             white-space: pre;
-
             border-radius: 6px;
-
             line-height: 1.5;
-
         }
-
         #placeholder {
-
             position: absolute;
-
             top: 12px;
-
             left: 12px;
-
             right: 12px;
-
             color: #64748b;
-
             pointer-events: none;
-
             background: white;
-
             padding: 4px;
-
             line-height: 1.5;
-
         }
-
         #placeholder div:first-child {
-
             margin-bottom: 8px;
-
         }
-
         .placeholder-example {
-
             font-family: 'Fira Code', monospace, Menlo, Consolas;
-
             color: #94a3b8;
-
             font-size: 0.9em;
-
         }
-
         #output-area {
-
             background: #f8fafc;
-
             border: 1px solid var(--border-color);
-
             padding: 12px;
-
             border-radius: 5px;
-
             white-space: pre-wrap;
-
             font-family: 'Fira Code', monospace, Menlo, Consolas;
-
             overflow-x: auto;
-
             color: var(--dark);
-
             transition: all 0.3s;
-
             font-size: 14px;
-
             min-height: 100px;
-
             max-height: 400px;
-
             overflow-y: auto;
-
         }
-
         .btn-group {
-
             display: flex;
-
             flex-wrap: wrap;
-
             gap: 8px;
-
             margin: 10px 0;
-
         }
-
         .btn {
-
             background: var(--primary);
-
             color: white;
-
             border: none;
-
             padding: 8px 12px;
-
             border-radius: 5px;
-
             cursor: pointer;
-
             transition: all 0.2s;
-
             font-size: 14px;
-
             flex: 1 0 auto;
-
             white-space: nowrap;
-
             text-align: center;
-
             font-family: 'Inter', sans-serif;
-
             font-weight: 500;
-
         }
-
         .btn:hover {
-
             background: var(--primary-dark);
-
         }
-
         .btn-secondary {
-
             background: #e2e8f0;
-
             color: var(--dark);
-
         }
-
         .btn-secondary:hover {
-
             background: #cbd5e1;
-
         }
-
         .btn-warning {
-
             background: #f59e0b;
-
         }
-
         .btn-warning:hover {
-
             background: #d97706;
-
         }
-
         .btn-danger {
-
             background: #ef4444;
-
         }
-
         .btn-danger:hover {
-
             background: #dc2626;
-
         }
-
         .btn-success {
-
             background: #10b981;
-
         }
-
         .btn-success:hover {
-
             background: #059669;
-
         }
-
         .btn-sm {
-
             padding: 6px 10px;
-
             font-size: 13px;
-
         }
-
         .dark-mode {
-
             background-color: var(--dark-bg);
-
             color: var(--light);
-
         }
-
         .dark-mode .container {
-
             background: var(--dark-container);
-
             color: white;
-
         }
-
         .dark-mode #input-area {
-
             background: var(--dark-container);
-
             color: white;
-
             border-color: var(--border-dark);
-
         }
-
         .dark-mode #placeholder {
-
             background: var(--dark-container);
-
         }
-
         .dark-mode #output-area {
-
             background: var(--dark-output);
-
             color: #e2e8f0;
-
             border-color: var(--border-dark);
-
         }
-
         .section-title {
-
             font-weight: 600;
-
             margin: 15px 0 8px 0;
-
             font-size: 16px;
-
         }
-
         .issues-panel {
-
             margin: 15px 0;
-
             padding: 12px;
-
             background: #fee2e2;
-
             border-radius: 5px;
-
             color: #b91c1c;
-
         }
-
         .dark-mode .issues-panel {
-
             background: #7f1d1d;
-
             color: #fecaca;
-
         }
-
         .issue-item {
-
             margin: 8px 0;
-
             padding: 8px;
-
             display: flex;
-
             flex-direction: column;
-
             gap: 8px;
-
             background: rgba(255,255,255,0.7);
-
             border-radius: 4px;
-
         }
-
         .dark-mode .issue-item {
-
             background: rgba(0,0,0,0.2);
-
         }
-
         .issue-actions {
-
             display: flex;
-
             flex-wrap: wrap;
-
             gap: 6px;
-
         }
-
         #editable-table {
-
             display: none;
-
             margin-top: 15px;
-
             overflow-x: auto;
-
             background: white;
-
             border-radius: 6px;
-
             padding: 10px;
-
             border: 1px solid var(--border-color);
-
         }
-
         .dark-mode #editable-table {
-
             background: var(--dark-container);
-
             border-color: var(--border-dark);
-
         }
-
         #data-table {
-
             width: 100%;
-
             border-collapse: collapse;
-
             margin-bottom: 10px;
-
             font-size: 14px;
-
         }
-
         #data-table th, #data-table td {
-
             border: 1px solid var(--border-color);
-
             padding: 8px;
-
             text-align: left;
-
             position: relative;
-
         }
-
         .dark-mode #data-table th,
-
         .dark-mode #data-table td {
-
             border-color: var(--border-dark);
-
         }
-
         #data-table th {
-
             background-color: #f1f5f9;
-
             position: sticky;
-
             top: 0;
-
             font-weight: 600;
-
         }
-
         .dark-mode #data-table th {
-
             background-color: #334155;
-
         }
-
         .cell-edit {
-
             width: 100%;
-
             border: none;
-
             padding: 4px;
-
             font-family: inherit;
-
             background: transparent;
-
             color: inherit;
-
         }
-
         .cell-edit:focus {
-
             outline: 2px solid var(--primary);
-
             border-radius: 3px;
-
         }
-
         .footer {
-
             margin-top: 30px;
-
             padding-top: 15px;
-
             border-top: 1px solid var(--border-color);
-
             text-align: center;
-
             font-size: 13px;
-
             color: #64748b;
-
         }
-
         .dark-mode .footer {
-
             border-color: var(--border-dark);
-
             color: #94a3b8;
-
         }
-
         .footer a {
-
             color: var(--primary);
-
             text-decoration: none;
-
         }
-
         .footer a:hover {
-
             text-decoration: underline;
-
         }
-
         .footer-links {
-
             display: flex;
-
             justify-content: center;
-
             flex-wrap: wrap;
-
             gap: 12px;
-
             margin: 8px 0;
-
         }
-
         #info-modal {
-
             display: none;
-
             position: fixed;
-
             top: 0;
-
             left: 0;
-
             width: 100%;
-
             height: 100%;
-
             background: rgba(0,0,0,0.5);
-
             z-index: 1000;
-
             justify-content: center;
-
             align-items: center;
-
             padding: 15px;
-
         }
-
         .modal-content {
-
             background: white;
-
             padding: 20px;
-
             border-radius: 8px;
-
             max-width: 500px;
-
             max-height: 80vh;
-
             overflow: auto;
-
             width: 100%;
-
         }
-
         .dark-mode .modal-content {
-
             background: var(--dark-container);
-
         }
-
         /* Chart Modal Styles */
-
         .modal {
-
             display: none;
-
             position: fixed;
-
             z-index: 1001;
-
             left: 0;
-
             top: 0;
-
             width: 100%;
-
             height: 100%;
-
             background-color: rgba(0,0,0,0.7);
-
         }
-
         .modal-content {
-
             background-color: #fff;
-
             margin: 5% auto;
-
             padding: 20px;
-
             border-radius: 8px;
-
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-
         }
-
         .dark-mode .modal-content {
-
             background-color: var(--dark-container);
-
             color: white;
-
         }
-
         .close {
-
             color: #aaa;
-
             float: right;
-
             font-size: 28px;
-
             font-weight: bold;
-
             cursor: pointer;
-
         }
-
         .close:hover {
-
             color: black;
-
         }
-
         .dark-mode .close:hover {
-
             color: white;
-
         }
-
         .chart-controls {
-
             display: flex;
-
             flex-wrap: wrap;
-
             gap: 10px;
-
             margin-bottom: 20px;
-
             align-items: center;
-
         }
-
         .chart-select {
-
             padding: 8px;
-
             border-radius: 4px;
-
             border: 1px solid var(--border-color);
-
             background: white;
-
             color: var(--dark);
-
         }
-
         .dark-mode .chart-select {
-
             background: var(--dark-output);
-
             color: white;
-
             border-color: var(--border-dark);
-
+        }
+        .chart-container {
+            width: 100%;
+            height: 70vh;
+            position: relative;
         }
 
-        .chart-container {
-
-            width: 100%;
-
-            height: 70vh;
-
+        /* File Upload Styles */
+        .file-upload-container {
+            margin-bottom: 15px;
+        }
+        .file-upload-wrapper {
             position: relative;
-
+            margin-bottom: 10px;
+        }
+        .file-upload-input {
+            width: 100%;
+            height: 46px;
+            opacity: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            cursor: pointer;
+        }
+        .file-upload-btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #e2e8f0;
+            color: var(--dark);
+            border-radius: 5px;
+            text-align: center;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .file-upload-btn:hover {
+            background: #cbd5e1;
+        }
+        .dark-mode .file-upload-btn {
+            background: #334155;
+            color: white;
+        }
+        .dark-mode .file-upload-btn:hover {
+            background: #475569;
+        }
+        .file-preview-container {
+            display: none;
+            margin-top: 15px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            padding: 10px;
+        }
+        .dark-mode .file-preview-container {
+            border-color: var(--border-dark);
+        }
+        .file-preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .file-preview-title {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        .file-preview-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .file-preview-content {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 5px;
+            border: 1px dashed var(--border-color);
+            border-radius: 3px;
+        }
+        .dark-mode .file-preview-content {
+            border-color: var(--border-dark);
+        }
+        .file-preview-text {
+            white-space: pre-wrap;
+            font-family: 'Fira Code', monospace;
+            font-size: 13px;
+        }
+        .file-preview-image {
+            max-width: 100%;
+            max-height: 180px;
+            display: block;
+            margin: 0 auto;
+        }
+        .file-preview-pages {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .page-btn {
+            padding: 4px 8px;
+            background: #e2e8f0;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .page-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+        .dark-mode .page-btn {
+            background: #334155;
+        }
+        .dark-mode .page-btn.active {
+            background: var(--primary);
+        }
+        .file-meta {
+            font-size: 12px;
+            color: #64748b;
+            margin-top: 5px;
+        }
+        .dark-mode .file-meta {
+            color: #94a3b8;
         }
 
         @media (max-width: 600px) {
-
             .btn {
-
                 padding: 8px;
-
                 font-size: 13px;
-
                 min-width: calc(50% - 4px);
-
             }
-
             #input-area {
-
                 min-height: 100px;
-
                 padding: 10px;
-
                 font-size: 14px;
-
             }
-
             #output-area {
-
                 padding: 10px;
-
                 font-size: 13px;
-
             }
-
             .container {
-
                 padding: 15px;
-
             }
-
             .btn-group {
-
                 gap: 6px;
-
             }
-
             .modal-content {
-
                 width: 95%;
-
                 margin: 10% auto;
-
             }
-
             .chart-controls {
-
                 flex-direction: column;
-
                 align-items: stretch;
-
             }
-
             .chart-container {
-
                 height: 50vh;
-
             }
-
+            .file-preview-actions {
+                flex-direction: column;
+                align-items: flex-end;
+            }
         }
-
     </style>
-
 </head>
-
 <body>
-
     <div class="container">
-
         <h1>Table2Code</h1>
-
         <p>Paste any table (Excel, Sheets, web) and convert to developer formats:</p>
-
         
+        <div class="file-upload-container">
+            <div class="file-upload-wrapper">
+                <input type="file" id="file-upload" class="file-upload-input" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.txt,.json" multiple>
+                <label for="file-upload" class="file-upload-btn">📁 Upload Files (CSV, Excel, PDF, DOC, TXT)</label>
+            </div>
+            
+            <div id="file-preview" class="file-preview-container">
+                <div class="file-preview-header">
+                    <div class="file-preview-title" id="file-preview-name">File Preview</div>
+                    <div class="file-preview-actions">
+                        <button class="btn btn-sm btn-danger" onclick="deleteCurrentFile()">Delete</button>
+                        <button class="btn btn-sm btn-secondary" onclick="updateFileContent()">Update</button>
+                        <button class="btn btn-sm" onclick="downloadCurrentFile()">Download</button>
+                    </div>
+                </div>
+                <div class="file-meta">
+                    <span id="file-type"></span> • 
+                    <span id="file-size"></span> • 
+                    <span id="file-last-modified"></span>
+                </div>
+                <div class="file-preview-content" id="file-preview-content">
+                    <div class="file-preview-text" id="file-text-content"></div>
+                    <img id="file-image-content" class="file-preview-image" style="display:none;">
+                </div>
+                <div class="file-preview-pages" id="page-controls" style="display:none;">
+                    <div>Pages:</div>
+                    <div id="page-buttons"></div>
+                </div>
+            </div>
+        </div>
 
         <div id="input-container">
-
             <div 
-
                 id="input-area" 
-
                 contenteditable="true"
-
                 aria-label="Paste table data here"
-
             ></div>
-
             <div id="placeholder">
-
                 <div>Paste your table here (e.g. from Excel)...</div>
-
                 <div class="placeholder-example">
-
                     <div>id  name    email           join_date</div>
-
                     <div>1   miki    miki@dev.com    2023-01-15</div>
-
                     <div>2   yishak  yishak@dev.com  2023-02-20</div>
-
                 </div>
-
             </div>
-
         </div>
-
         
-
         <div class="section-title">Convert To:</div>
-
         <div class="btn-group">
-
             <button class="btn" onclick="convertTo('sql')">SQL</button>
-
             <button class="btn" onclick="convertTo('smart-sql')">Smart SQL</button>
-
             <button class="btn" onclick="convertTo('typescript')">TypeScript</button>
-
             <button class="btn" onclick="convertTo('json')">JSON</button>
-
             <button class="btn" onclick="convertTo('mock-api')">Mock API</button>
-
             <button class="btn" onclick="convertTo('markdown')">Markdown</button>
-
             <button class="btn" onclick="downloadCSV()">Download CSV</button>
-
             <button class="btn" onclick="convertTo('chart')">📊 Generate Chart</button>
-
         </div>
-
         
-
         <div class="section-title">Data Tools:</div>
-
         <div class="btn-group">
-
             <button class="btn btn-warning" onclick="analyzeData()">🔍 Find Issues</button>
-
             <button class="btn btn-secondary" onclick="cleanData()">🛠 Fix Common</button>
-
             <button class="btn btn-success" onclick="copyToClipboard()">📋 Copy</button>
-
             <button class="btn" onclick="generateShareLink()">🔗 Share</button>
-
             <button class="btn" onclick="toggleDarkMode()">🌙 Dark Mode</button>
-
         </div>
-
         
-
         <div id="issues-area" class="issues-panel" style="display:none;">
-
             <h3 style="margin-top:0;">⚠️ Data Issues Found:</h3>
-
             <div id="issues-list"></div>
-
             <div class="btn-group" style="margin-top:10px;">
-
                 <button class="btn btn-sm" onclick="showEditableTable()">Edit Full Table</button>
-
                 <button class="btn btn-sm btn-danger" onclick="hideIssuesPanel()">Close</button>
-
             </div>
-
         </div>
-
         
-
         <div class="section-title">Output:</div>
-
         <div id="output-area">Your converted code will appear here...</div>
-
         
-
         <div id="editable-table">
-
             <div class="btn-group">
-
                 <button class="btn btn-success btn-sm" onclick="saveTableEdits()">💾 Save</button>
-
                 <button class="btn btn-danger btn-sm" onclick="hideEditableTable()">❌ Cancel</button>
-
                 <button class="btn btn-sm" onclick="addNewRow()">➕ Add Row</button>
-
                 <button class="btn btn-sm" onclick="addNewColumn()">➕ Add Column</button>
-
             </div>
-
             <table id="data-table"></table>
-
         </div>
-
     </div>
-
     
-
     <!-- Chart Modal -->
-
     <div id="chart-modal" class="modal">
-
         <div class="modal-content" style="max-width: 800px;">
-
             <span class="close" onclick="closeChartModal()">&times;</span>
-
             <h2>Chart Visualization</h2>
-
             <div class="chart-controls">
-
                 <select id="chart-type" class="chart-select">
-
                     <option value="bar">Bar Chart</option>
-
                     <option value="line">Line Chart</option>
-
                     <option value="pie">Pie Chart</option>
-
                     <option value="doughnut">Doughnut Chart</option>
-
                     <option value="radar">Radar Chart</option>
-
                 </select>
-
                 <select id="x-axis" class="chart-select"></select>
-
                 <select id="y-axis" class="chart-select"></select>
-
                 <button onclick="updateChart()" class="btn">Update Chart</button>
-
                 <button onclick="downloadChart()" class="btn btn-success">Download PNG</button>
-
                 <button onclick="downloadChartSVG()" class="btn btn-success">Download SVG</button>
-
             </div>
-
             <div class="chart-container">
-
                 <canvas id="data-chart"></canvas>
-
             </div>
-
         </div>
-
     </div>
-
     
-
     <div class="footer">
-
         <div>Table2Code v1.2.0</div>
-
         <div>Developed by <a href="https://aps-kappa.vercel.app/" id="developer-link">Kws</a></div>
-
         <div class="footer-links">
-
             <a href="#" onclick="showAbout()">About</a>
-
             <a href="#" onclick="showPrivacy()">Privacy</a>
-
         </div>
-
         <div>© 2025 All rights reserved</div>
-
     </div>
-
-
 
     <div id="info-modal">
-
         <div class="modal-content">
-
             <h3 style="margin-top:0;" id="modal-title">About</h3>
-
             <div id="modal-content"></div>
-
             <button class="btn" onclick="document.getElementById('info-modal').style.display='none'" style="margin-top:15px;">Close</button>
-
         </div>
-
     </div>
-
     <script src="app.js"></script>
-
 </body>
-
-    </html>
+</html>

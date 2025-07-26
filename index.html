@@ -8,19 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fira+Code&display=swap" rel="stylesheet">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- For PDF support -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
-    <script>
-        // Initialize PDF.js worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
-    </script>
-    
-    <!-- For Excel support -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    
-    <!-- For Word DOCX support -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.0/mammoth.browser.min.js"></script>
     <style>
         :root {
             --primary: #3b82f6;
@@ -32,6 +19,14 @@
             --dark-output: #334155;
             --border-color: #e2e8f0;
             --border-dark: #475569;
+            --success: #10b981;
+            --success-dark: #059669;
+            --warning: #f59e0b;
+            --warning-dark: #d97706;
+            --danger: #ef4444;
+            --danger-dark: #dc2626;
+            --secondary: #e2e8f0;
+            --secondary-dark: #cbd5e1;
         }
         * {
             box-sizing: border-box;
@@ -54,7 +49,7 @@
             padding: 20px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             transition: all 0.3s;
-            max-width: 100%;
+            max-width: 1200px;
             overflow: hidden;
             margin: 0 auto;
         }
@@ -82,6 +77,10 @@
             border-radius: 6px;
             line-height: 1.5;
         }
+        #input-area:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+        }
         #placeholder {
             position: absolute;
             top: 12px;
@@ -97,7 +96,7 @@
             margin-bottom: 8px;
         }
         .placeholder-example {
-            font-family: 'Fira+Code', monospace, Menlo, Consolas;
+            font-family: 'Fira Code', monospace, Menlo, Consolas;
             color: #94a3b8;
             font-size: 0.9em;
         }
@@ -107,7 +106,7 @@
             padding: 12px;
             border-radius: 5px;
             white-space: pre-wrap;
-            font-family: 'Fira+Code', monospace, Menlo, Consolas;
+            font-family: 'Fira Code', monospace, Menlo, Consolas;
             overflow-x: auto;
             color: var(--dark);
             transition: all 0.3s;
@@ -136,34 +135,38 @@
             text-align: center;
             font-family: 'Inter', sans-serif;
             font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
         }
         .btn:hover {
             background: var(--primary-dark);
         }
         .btn-secondary {
-            background: #e2e8f0;
+            background: var(--secondary);
             color: var(--dark);
         }
         .btn-secondary:hover {
-            background: #cbd5e1;
+            background: var(--secondary-dark);
         }
         .btn-warning {
-            background: #f59e0b;
+            background: var(--warning);
         }
         .btn-warning:hover {
-            background: #d97706;
+            background: var(--warning-dark);
         }
         .btn-danger {
-            background: #ef4444;
+            background: var(--danger);
         }
         .btn-danger:hover {
-            background: #dc2626;
+            background: var(--danger-dark);
         }
         .btn-success {
-            background: #10b981;
+            background: var(--success);
         }
         .btn-success:hover {
-            background: #059669;
+            background: var(--success-dark);
         }
         .btn-sm {
             padding: 6px 10px;
@@ -335,14 +338,16 @@
             height: 100%;
             background-color: rgba(0,0,0,0.7);
         }
-        .modal-content {
+        .chart-modal-content {
             background-color: #fff;
             margin: 5% auto;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 900px;
         }
-        .dark-mode .modal-content {
+        .dark-mode .chart-modal-content {
             background-color: var(--dark-container);
             color: white;
         }
@@ -372,6 +377,7 @@
             border: 1px solid var(--border-color);
             background: white;
             color: var(--dark);
+            min-width: 120px;
         }
         .dark-mode .chart-select {
             background: var(--dark-output);
@@ -411,6 +417,7 @@
             text-align: center;
             font-weight: 500;
             transition: all 0.3s;
+            cursor: pointer;
         }
         .file-upload-btn:hover {
             background: #cbd5e1;
@@ -458,7 +465,7 @@
         }
         .file-preview-text {
             white-space: pre-wrap;
-            font-family: 'Fira+Code', monospace;
+            font-family: 'Fira Code', monospace;
             font-size: 13px;
         }
         .file-preview-image {
@@ -499,6 +506,48 @@
             color: #94a3b8;
         }
 
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 12px 16px;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            max-width: 300px;
+        }
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+        .toast.error {
+            background: var(--danger);
+        }
+        .toast.warning {
+            background: var(--warning);
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Responsive adjustments */
         @media (max-width: 600px) {
             .btn {
                 padding: 8px;
@@ -520,9 +569,10 @@
             .btn-group {
                 gap: 6px;
             }
-            .modal-content {
+            .modal-content, .chart-modal-content {
                 width: 95%;
                 margin: 10% auto;
+                padding: 15px;
             }
             .chart-controls {
                 flex-direction: column;
@@ -535,6 +585,36 @@
                 flex-direction: column;
                 align-items: flex-end;
             }
+            .toast {
+                max-width: calc(100% - 40px);
+                left: 20px;
+                right: 20px;
+            }
+        }
+
+        /* Table editor enhancements */
+        .table-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .table-edit-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: #64748b;
+            padding: 4px;
+            border-radius: 4px;
+        }
+        .table-edit-btn:hover {
+            background: rgba(0,0,0,0.05);
+        }
+        .dark-mode .table-edit-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        #data-table td:hover .table-edit-btn {
+            visibility: visible;
         }
     </style>
 </head>
@@ -546,16 +626,24 @@
         <div class="file-upload-container">
             <div class="file-upload-wrapper">
                 <input type="file" id="file-upload" class="file-upload-input" accept=".csv,.xlsx,.xls,.pdf,.doc,.docx,.txt,.json" multiple>
-                <label for="file-upload" class="file-upload-btn">📁 Upload Files (CSV, Excel, PDF, DOC, TXT)</label>
+                <label for="file-upload" class="file-upload-btn">
+                    <span>📁 Upload Files (CSV, Excel, PDF, DOC, TXT)</span>
+                </label>
             </div>
             
             <div id="file-preview" class="file-preview-container">
                 <div class="file-preview-header">
                     <div class="file-preview-title" id="file-preview-name">File Preview</div>
                     <div class="file-preview-actions">
-                        <button class="btn btn-sm btn-danger" id="delete-file-btn">Delete</button>
-                        <button class="btn btn-sm btn-secondary" id="update-file-btn">Update</button>
-                        <button class="btn btn-sm" id="download-file-btn">Download</button>
+                        <button class="btn btn-sm btn-danger" id="delete-file-btn">
+                            <span>🗑️ Delete</span>
+                        </button>
+                        <button class="btn btn-sm btn-secondary" id="update-file-btn">
+                            <span>🔄 Update</span>
+                        </button>
+                        <button class="btn btn-sm" id="download-file-btn">
+                            <span>📥 Download</span>
+                        </button>
                     </div>
                 </div>
                 <div class="file-meta">
@@ -579,6 +667,7 @@
                 id="input-area" 
                 contenteditable="true"
                 aria-label="Paste table data here"
+                spellcheck="false"
             ></div>
             <div id="placeholder">
                 <div>Paste your table here (e.g. from Excel)...</div>
@@ -592,31 +681,61 @@
         
         <div class="section-title">Convert To:</div>
         <div class="btn-group">
-            <button class="btn" id="sql-btn">SQL</button>
-            <button class="btn" id="smart-sql-btn">Smart SQL</button>
-            <button class="btn" id="typescript-btn">TypeScript</button>
-            <button class="btn" id="json-btn">JSON</button>
-            <button class="btn" id="mock-api-btn">Mock API</button>
-            <button class="btn" id="markdown-btn">Markdown</button>
-            <button class="btn" id="download-csv-btn">Download CSV</button>
-            <button class="btn" id="chart-btn">📊 Generate Chart</button>
+            <button class="btn" id="sql-btn">
+                <span>💾 SQL</span>
+            </button>
+            <button class="btn" id="smart-sql-btn">
+                <span>🧠 Smart SQL</span>
+            </button>
+            <button class="btn" id="typescript-btn">
+                <span>📝 TypeScript</span>
+            </button>
+            <button class="btn" id="json-btn">
+                <span>🔖 JSON</span>
+            </button>
+            <button class="btn" id="mock-api-btn">
+                <span>🌐 Mock API</span>
+            </button>
+            <button class="btn" id="markdown-btn">
+                <span>📌 Markdown</span>
+            </button>
+            <button class="btn" id="download-csv-btn">
+                <span>📥 Download CSV</span>
+            </button>
+            <button class="btn" id="chart-btn">
+                <span>📊 Generate Chart</span>
+            </button>
         </div>
         
         <div class="section-title">Data Tools:</div>
         <div class="btn-group">
-            <button class="btn btn-warning" id="analyze-btn">🔍 Find Issues</button>
-            <button class="btn btn-secondary" id="clean-btn">🛠 Fix Common</button>
-            <button class="btn btn-success" id="copy-btn">📋 Copy</button>
-            <button class="btn" id="share-btn">🔗 Share</button>
-            <button class="btn" id="dark-mode-btn">🌙 Dark Mode</button>
+            <button class="btn btn-warning" id="analyze-btn">
+                <span>🔍 Find Issues</span>
+            </button>
+            <button class="btn btn-secondary" id="clean-btn">
+                <span>🛠 Fix Common</span>
+            </button>
+            <button class="btn btn-success" id="copy-btn">
+                <span>📋 Copy</span>
+            </button>
+            <button class="btn" id="share-btn">
+                <span>🔗 Share</span>
+            </button>
+            <button class="btn" id="dark-mode-btn">
+                <span>🌙 Dark Mode</span>
+            </button>
         </div>
         
         <div id="issues-area" class="issues-panel" style="display:none;">
             <h3 style="margin-top:0;">⚠️ Data Issues Found:</h3>
             <div id="issues-list"></div>
             <div class="btn-group" style="margin-top:10px;">
-                <button class="btn btn-sm" id="edit-table-btn">Edit Full Table</button>
-                <button class="btn btn-sm btn-danger" id="close-issues-btn">Close</button>
+                <button class="btn btn-sm" id="edit-table-btn">
+                    <span>✏️ Edit Full Table</span>
+                </button>
+                <button class="btn btn-sm btn-danger" id="close-issues-btn">
+                    <span>❌ Close</span>
+                </button>
             </div>
         </div>
         
@@ -624,11 +743,25 @@
         <div id="output-area">Your converted code will appear here...</div>
         
         <div id="editable-table">
-            <div class="btn-group">
-                <button class="btn btn-success btn-sm" id="save-table-btn">💾 Save</button>
-                <button class="btn btn-danger btn-sm" id="cancel-table-btn">❌ Cancel</button>
-                <button class="btn btn-sm" id="add-row-btn">➕ Add Row</button>
-                <button class="btn btn-sm" id="add-col-btn">➕ Add Column</button>
+            <div class="table-controls">
+                <button class="btn btn-success btn-sm" id="save-table-btn">
+                    <span>💾 Save</span>
+                </button>
+                <button class="btn btn-danger btn-sm" id="cancel-table-btn">
+                    <span>❌ Cancel</span>
+                </button>
+                <button class="btn btn-sm" id="add-row-btn">
+                    <span>➕ Add Row</span>
+                </button>
+                <button class="btn btn-sm" id="add-col-btn">
+                    <span>➕ Add Column</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" id="delete-row-btn">
+                    <span>➖ Delete Row</span>
+                </button>
+                <button class="btn btn-sm btn-secondary" id="delete-col-btn">
+                    <span>➖ Delete Column</span>
+                </button>
             </div>
             <table id="data-table"></table>
         </div>
@@ -636,7 +769,7 @@
     
     <!-- Chart Modal -->
     <div id="chart-modal" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
+        <div class="chart-modal-content">
             <span class="close" id="close-chart-btn">&times;</span>
             <h2>Chart Visualization</h2>
             <div class="chart-controls">
@@ -646,12 +779,27 @@
                     <option value="pie">Pie Chart</option>
                     <option value="doughnut">Doughnut Chart</option>
                     <option value="radar">Radar Chart</option>
+                    <option value="scatter">Scatter Plot</option>
+                    <option value="bubble">Bubble Chart</option>
                 </select>
-                <select id="x-axis" class="chart-select"></select>
-                <select id="y-axis" class="chart-select"></select>
-                <button id="update-chart-btn" class="btn">Update Chart</button>
-                <button id="download-chart-btn" class="btn btn-success">Download PNG</button>
-                <button id="download-svg-btn" class="btn btn-success">Download SVG</button>
+                <select id="x-axis" class="chart-select">
+                    <option value="">Select X-Axis</option>
+                </select>
+                <select id="y-axis" class="chart-select">
+                    <option value="">Select Y-Axis</option>
+                </select>
+                <select id="dataset-select" class="chart-select" style="display:none;">
+                    <option value="">Select Dataset</option>
+                </select>
+                <button id="update-chart-btn" class="btn">
+                    <span>🔄 Update Chart</span>
+                </button>
+                <button id="download-chart-btn" class="btn btn-success">
+                    <span>📥 Download PNG</span>
+                </button>
+                <button id="download-svg-btn" class="btn btn-success">
+                    <span>📥 Download SVG</span>
+                </button>
             </div>
             <div class="chart-container">
                 <canvas id="data-chart"></canvas>
@@ -660,24 +808,43 @@
     </div>
     
     <div class="footer">
-        <div>Table2Code v1.2.0</div>
-        <div>Developed by <a href="https://aps-kappa.vercel.app/" id="developer-link">Kws</a></div>
+        <div>Table2Code v1.3.0</div>
+        <div>Developed by <a href="https://aps-kappa.vercel.app/" id="developer-link" target="_blank">Kws</a></div>
         <div class="footer-links">
             <a href="#" id="about-link">About</a>
             <a href="#" id="privacy-link">Privacy</a>
+            <a href="#" id="feedback-link">Feedback</a>
+            <a href="#" id="github-link">GitHub</a>
         </div>
         <div>© 2025 All rights reserved</div>
     </div>
 
+    <!-- Info Modal -->
     <div id="info-modal">
         <div class="modal-content">
-            <h3 style="margin-top:0;" id="modal-title">About</h3>
-            <div id="modal-content"></div>
-            <button class="btn" id="close-modal-btn" style="margin-top:15px;">Close</button>
+            <h3 style="margin-top:0;" id="modal-title">About Table2Code</h3>
+            <div id="modal-content">
+                <p>Table2Code is a powerful tool that helps developers convert table data between various formats with ease.</p>
+                <p><strong>Features:</strong></p>
+                <ul style="margin: 10px 0 10px 20px;">
+                    <li>Convert tables to SQL, TypeScript, JSON, and more</li>
+                    <li>Smart analysis of data structure</li>
+                    <li>Generate mock APIs from your data</li>
+                    <li>Visualize data with interactive charts</li>
+                    <li>Edit and clean data directly in the app</li>
+                </ul>
+                <p>All processing happens in your browser - your data never leaves your device.</p>
+            </div>
+            <button class="btn" id="close-modal-btn" style="margin-top:15px;">
+                <span>Close</span>
+            </button>
         </div>
     </div>
 
-    <!-- We'll add the JavaScript separately -->
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <!-- JavaScript will be loaded here -->
     <script src="app.js"></script>
 </body>
 </html>

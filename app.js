@@ -3,6 +3,208 @@
         let tableData = [];
         let currentFormat = '';
         let dataChart = null;
+// Global data store
+let tableData = [];
+let currentFormat = '';
+let dataChart = null;
+let uploadedFiles = [];
+let currentFileIndex = -1;
+
+// Initialize with sample data if empty
+document.getElementById('input-area').addEventListener('click', function() {
+    const placeholder = document.getElementById('placeholder');
+    if (this.textContent.trim() === '') {
+        placeholder.style.display = 'none';
+        this.textContent = 'id\tname\temail\tjoin_date\n1\tAlice\talice@test.com\t2023-01-15\n2\tBob\tbob@test.com\t2023-02-20\n3\t\tcharlie@test.com\t2023/03/10';
+        parseTable(this.textContent);
+    }
+});
+
+// File upload handling
+document.getElementById('file-upload').addEventListener('change', function(e) {
+    if (this.files.length === 0) return;
+    
+    uploadedFiles = Array.from(this.files);
+    currentFileIndex = 0;
+    processFile(uploadedFiles[0]);
+});
+
+// Process uploaded file
+function processFile(file) {
+    const previewContainer = document.getElementById('file-preview');
+    const previewName = document.getElementById('file-preview-name');
+    const fileTypeElement = document.getElementById('file-type');
+    const fileSizeElement = document.getElementById('file-size');
+    const fileModifiedElement = document.getElementById('file-last-modified');
+    const fileContentElement = document.getElementById('file-text-content');
+    const fileImageElement = document.getElementById('file-image-content');
+    const pageControls = document.getElementById('page-controls');
+    
+    // Display file info
+    previewName.textContent = file.name;
+    fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
+    fileSizeElement.textContent = formatFileSize(file.size);
+    fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
+    
+    // Hide image and clear text by default
+    fileImageElement.style.display = 'none';
+    fileContentElement.textContent = '';
+    pageControls.style.display = 'none';
+    
+    // Show preview container
+    previewContainer.style.display = 'block';
+    
+    // Process based on file type
+    const fileType = file.type;
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    
+    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
+        // Text-based files
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            fileContentElement.textContent = e.target.result;
+            
+            // If CSV, try to parse it
+            if (fileExt === 'csv') {
+                parseTable(e.target.result);
+            }
+        };
+        reader.readAsText(file);
+    } else if (fileExt === 'pdf') {
+        // PDF files - we'll show a message since we can't render PDFs without a library
+        fileContentElement.textContent = "PDF preview not available. Please extract text first.";
+        // In a real implementation, you'd use PDF.js here
+    } else if (fileType.includes('image/')) {
+        // Image files
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            fileImageElement.src = e.target.result;
+            fileImageElement.style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+        // Excel files - we'll show a message since we need a library to parse
+        fileContentElement.textContent = "Excel file detected. Parsing...";
+        parseExcelFile(file);
+    } else if (fileType.includes('word') || fileExt === 'doc' || fileExt === 'docx') {
+        // Word documents - show message
+        fileContentElement.textContent = "Word document detected. Text extraction not implemented.";
+        // In a real implementation, you'd use a DOCX parser library
+    } else {
+        // Unknown file type
+        fileContentElement.textContent = "File type not supported for preview.";
+    }
+}
+
+// Parse Excel file
+function parseExcelFile(file) {
+    // In a real implementation, you would use a library like SheetJS
+    // This is a placeholder that shows how it might work
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            // This would be replaced with actual Excel parsing code
+            // For now, we'll just show a message
+            document.getElementById('file-text-content').textContent = 
+                "Excel parsing would happen here with SheetJS or similar library.";
+            
+            // Mock parsing - in reality you would get the sheet data
+            const mockData = "id\tname\temail\n1\tAlice\talice@test.com\n2\tBob\tbob@test.com";
+            parseTable(mockData);
+        } catch (error) {
+            console.error("Error parsing Excel file:", error);
+            document.getElementById('file-text-content').textContent = 
+                "Error parsing Excel file. Please try a CSV export.";
+        }
+    };
+    reader.readAsArrayBuffer(file);
+}
+
+// Format file size
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Delete current file
+function deleteCurrentFile() {
+    if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
+        uploadedFiles.splice(currentFileIndex, 1);
+        
+        if (uploadedFiles.length === 0) {
+            // No files left
+            document.getElementById('file-preview').style.display = 'none';
+            currentFileIndex = -1;
+        } else {
+            // Show next file or previous if we deleted the last one
+            currentFileIndex = Math.min(currentFileIndex, uploadedFiles.length - 1);
+            processFile(uploadedFiles[currentFileIndex]);
+        }
+    }
+}
+
+// Update file content
+function updateFileContent() {
+    if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
+        const fileContentElement = document.getElementById('file-text-content');
+        const updatedContent = fileContentElement.textContent;
+        
+        // Create a new file with the updated content
+        const originalFile = uploadedFiles[currentFileIndex];
+        const newFile = new File([updatedContent], originalFile.name, {
+            type: originalFile.type,
+            lastModified: Date.now()
+        });
+        
+        uploadedFiles[currentFileIndex] = newFile;
+        alert("File content updated!");
+        
+        // If this was a CSV file, re-parse it
+        const fileExt = originalFile.name.split('.').pop().toLowerCase();
+        if (fileExt === 'csv') {
+            parseTable(updatedContent);
+        }
+    }
+}
+
+// Download current file
+function downloadCurrentFile() {
+    if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
+        const file = uploadedFiles[currentFileIndex];
+        const url = URL.createObjectURL(file);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+}
+
+// Detect pasted table data
+document.getElementById('input-area').addEventListener('paste', (e) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData('text/plain');
+    document.getElementById('placeholder').style.display = 'none';
+    parseTable(text);
+});
+
+// Parse tabular data into 2D array
+function parseTable(text) {
+    const rows = text.trim().split('\n').map(row => {
+        // Handle both tab and comma delimited data
+        const separator = text.includes('\t') ? '\t' : ',';
+        return row.split(separator).map(cell => cell.trim());
+    });
+    
+    tableData = rows;
+    document.getElementById('input-area').textContent = text;
+    convertTo('smart-sql');
+}
 
         // Initialize with sample data if empty
         document.getElementById('input-area').addEventListener('click', function() {

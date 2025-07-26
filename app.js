@@ -90,73 +90,194 @@ function setupEventListeners() {
         document.getElementById('info-modal').style.display = 'none';
     });
 }
-
-// Process uploaded file
-function processFile(file) {
-    const previewContainer = document.getElementById('file-preview');
-    const previewName = document.getElementById('file-preview-name');
-    const fileTypeElement = document.getElementById('file-type');
-    const fileSizeElement = document.getElementById('file-size');
-    const fileModifiedElement = document.getElementById('file-last-modified');
-    const fileContentElement = document.getElementById('file-text-content');
-    const fileImageElement = document.getElementById('file-image-content');
-    const pageControls = document.getElementById('page-controls');
+// function processFile(file) {
+//     const previewContainer = document.getElementById('file-preview');
+//     const previewName = document.getElementById('file-preview-name');
+//     const fileTypeElement = document.getElementById('file-type');
+//     const fileSizeElement = document.getElementById('file-size');
+//     const fileModifiedElement = document.getElementById('file-last-modified');
+//     const fileContentElement = document.getElementById('file-text-content');
+//     const fileImageElement = document.getElementById('file-image-content');
+//     const pageControls = document.getElementById('page-controls');
     
-    // Display file info
-    previewName.textContent = file.name;
-    fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
-    fileSizeElement.textContent = formatFileSize(file.size);
-    fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
+//     // Display file info
+//     previewName.textContent = file.name;
+//     fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
+//     fileSizeElement.textContent = formatFileSize(file.size);
+//     fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
     
-    // Hide image and clear text by default
-    fileImageElement.style.display = 'none';
-    fileContentElement.textContent = '';
-    pageControls.style.display = 'none';
+//     // Hide image and clear text by default
+//     fileImageElement.style.display = 'none';
+//     fileContentElement.textContent = '';
+//     pageControls.style.display = 'none';
     
-    // Show preview container
-    previewContainer.style.display = 'block';
+//     // Show preview container
+//     previewContainer.style.display = 'block';
     
-    // Process based on file type
-    const fileType = file.type;
-    const fileExt = file.name.split('.').pop().toLowerCase();
+//     // Process based on file type
+//     const fileType = file.type;
+//     const fileExt = file.name.split('.').pop().toLowerCase();
     
-    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
-        // Text-based files
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            fileContentElement.textContent = e.target.result;
+//     if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
+//         // Text-based files
+//         const reader = new FileReader();
+//         reader.onload = function(e) {
+//             fileContentElement.textContent = e.target.result;
             
-            // If CSV, try to parse it
-            if (fileExt === 'csv') {
-                parseTable(e.target.result);
-            }
-        };
-        reader.readAsText(file);
-    } else if (fileExt === 'pdf') {
-        // PDF files
-        fileContentElement.textContent = "PDF preview requires PDF.js library";
-    } else if (fileType.includes('image/')) {
-        // Image files
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            fileImageElement.src = e.target.result;
-            fileImageElement.style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    } else if (fileExt === 'xlsx' || fileExt === 'xls') {
-        // Excel files
-        fileContentElement.textContent = "Excel preview requires SheetJS library";
-    } else if (fileExt === 'docx') {
-        // Word documents
-        fileContentElement.textContent = "Word preview requires mammoth.js library";
-    } else if (fileExt === 'doc') {
-        fileContentElement.textContent = "Old .doc format not supported. Please save as .docx";
-    } else {
-        // Unknown file type
-        fileContentElement.textContent = "File type not supported for preview.";
-    }
-}
+//             // If CSV, try to parse it
+//             if (fileExt === 'csv') {
+//                 parseTable(e.target.result);
+//             }
+//         };
+//         reader.readAsText(file);
+//     } else if (fileExt === 'pdf') {
+//         // PDF files
+//         extractTextFromPdf(file, fileContentElement);
+//     } else if (fileType.includes('image/')) {
+//         // Image files
+//         const reader = new FileReader();
+//         reader.onload = function(e) {
+//             fileImageElement.src = e.target.result;
+//             fileImageElement.style.display = 'block';
+//         };
+//         reader.readAsDataURL(file);
+//     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
+//         // Excel files
+//         parseExcelFile(file);
+//     } else if (fileExt === 'docx') {
+//         // Word documents (DOCX)
+//         extractTextFromDocx(file, fileContentElement);
+//     } else if (fileExt === 'doc') {
+//         fileContentElement.textContent = "Old .doc format not supported. Please save as .docx";
+//     } else {
+//         // Unknown file type
+//         fileContentElement.textContent = "File type not supported for preview.";
+//     }
+// }
+function processFile(file) {
+  const previewContainer = document.getElementById('file-preview');
+  const previewName = document.getElementById('file-preview-name');
+  const fileTypeElement = document.getElementById('file-type');
+  const fileSizeElement = document.getElementById('file-size');
+  const fileModifiedElement = document.getElementById('file-last-modified');
+  const fileContentElement = document.getElementById('file-text-content');
+  const fileImageElement = document.getElementById('file-image-content');
+  const pageControls = document.getElementById('page-controls');
+  
+  // Reset preview area
+  previewName.textContent = file.name;
+  fileTypeElement.textContent = file.type || file.name.split('.').pop().toUpperCase();
+  fileSizeElement.textContent = formatFileSize(file.size);
+  fileModifiedElement.textContent = new Date(file.lastModified).toLocaleString();
+  fileImageElement.style.display = 'none';
+  fileContentElement.innerHTML = ''; // Changed to innerHTML for DOC support
+  pageControls.style.display = 'none';
+  previewContainer.style.display = 'block';
 
+  const fileExt = file.name.split('.').pop().toLowerCase();
+
+  // File type handling
+  if (fileExt === 'pdf') {
+    renderPdfPreview(file, fileContentElement);
+  } 
+  else if (fileExt === 'docx') {
+    extractTextFromDocx(file, fileContentElement);
+  }
+  else if (fileExt === 'doc') {
+    extractTextFromDoc(file, fileContentElement);
+  }
+  else if (fileExt === 'xlsx' || fileExt === 'xls') {
+    parseExcelFile(file);
+  }
+  else if (file.type.includes('image/')) {
+    renderImagePreview(file, fileImageElement);
+  }
+  else {
+    // Handle text files (CSV, TXT, etc)
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      fileContentElement.textContent = e.target.result;
+      if (fileExt === 'csv') parseTable(e.target.result);
+    };
+    reader.readAsText(file);
+  }
+}
+function renderPdfPreview(file, container) {
+  container.innerHTML = '<div class="pdf-viewer" style="height:400px;overflow:auto;border:1px solid #eee;"></div>';
+  const viewer = container.querySelector('.pdf-viewer');
+  
+  const reader = new FileReader();
+  reader.onload = function() {
+    const typedarray = new Uint8Array(this.result);
+    
+    // Render PDF
+    pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+      // Show first page as preview
+      pdf.getPage(1).then(function(page) {
+        const viewport = page.getViewport({ scale: 1.0 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        viewer.appendChild(canvas);
+        
+        page.render({
+          canvasContext: context,
+          viewport: viewport
+        });
+      });
+      
+      // Also extract text
+      let fullText = "";
+      for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+        pdf.getPage(i).then(function(page) {
+          return page.getTextContent();
+        }).then(function(textContent) {
+          fullText += textContent.items.map(item => item.str).join(' ') + "\n\n";
+          if (i === Math.min(pdf.numPages, 3)) {
+            // Add text extraction below preview
+            const textDiv = document.createElement('div');
+            textDiv.style.marginTop = '20px';
+            textDiv.style.padding = '10px';
+            textDiv.style.background = '#f5f5f5';
+            textDiv.textContent = "Extracted Text:\n" + fullText;
+            viewer.appendChild(textDiv);
+          }
+        });
+      }
+    });
+  };
+  reader.readAsArrayBuffer(file);
+}
+function extractTextFromDoc(file, container) {
+  container.textContent = "Extracting text from DOC file...";
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      // Convert binary to base64
+      const base64 = btoa(
+        new Uint8Array(e.target.result)
+          .reduce((data, byte) => data + String.fromCharCode(byte), '')
+      );
+      
+      // Use docx2html which has basic DOC support
+      docx2html(e.target.result)
+        .then(html => {
+          container.innerHTML = html;
+          // Extract plain text version too
+          const text = container.textContent || container.innerText;
+          parseTableIfTabular(text);
+        })
+        .catch(err => {
+          container.textContent = "Error processing DOC file. Full error: " + err.message;
+        });
+    } catch (err) {
+      container.textContent = "This DOC file format isn't supported. Try saving as DOCX.";
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
 // Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';

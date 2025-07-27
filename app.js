@@ -5,6 +5,8 @@ let currentFormat = '';
 let dataChart = null;
 let uploadedFiles = [];
 let currentFileIndex = -1;
+let pdfDoc = null;
+let currentPdfPage = 1;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -44,6 +46,10 @@ function setupEventListeners() {
         currentFileIndex = 0;
         processFile(uploadedFiles[0]);
     });
+
+    // File navigation buttons
+    document.getElementById('prev-file-btn').addEventListener('click', showPrevFile);
+    document.getElementById('next-file-btn').addEventListener('click', showNextFile);
 
     // File action buttons
     document.getElementById('delete-file-btn').addEventListener('click', deleteCurrentFile);
@@ -85,6 +91,11 @@ function setupEventListeners() {
     document.getElementById('download-chart-btn').addEventListener('click', downloadChart);
     document.getElementById('download-svg-btn').addEventListener('click', downloadChartSVG);
 
+    // PDF navigation
+    document.getElementById('prev-page-btn').addEventListener('click', showPrevPdfPage);
+    document.getElementById('next-page-btn').addEventListener('click', showNextPdfPage);
+    document.getElementById('delete-page-btn').addEventListener('click', deleteCurrentPdfPage);
+
     // Footer links
     document.getElementById('about-link').addEventListener('click', showAbout);
     document.getElementById('privacy-link').addEventListener('click', showPrivacy);
@@ -106,6 +117,7 @@ function processFile(file) {
     const fileImageElement = document.getElementById('file-image-content');
     const pageControls = document.getElementById('page-controls');
     const editControls = document.getElementById('edit-controls');
+    const fileNavControls = document.getElementById('file-nav-controls');
     
     // Display file info
     previewName.textContent = file.name;
@@ -117,6 +129,7 @@ function processFile(file) {
     fileImageElement.style.display = 'none';
     fileContentElement.textContent = '';
     pageControls.style.display = 'none';
+    fileNavControls.style.display = uploadedFiles.length > 1 ? 'flex' : 'none';
     
     // Show edit controls only for editable files
     const fileExt = file.name.split('.').pop().toLowerCase();
@@ -129,7 +142,7 @@ function processFile(file) {
     // Process based on file type
     const fileType = file.type;
     
-    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json' || fileExt === 'md') {
+    if (fileType.includes('text/') || editableTypes.includes(fileExt)) {
         // Text-based files
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -140,9 +153,12 @@ function processFile(file) {
                 parseTable(e.target.result);
             }
         };
+        reader.onerror = function() {
+            fileContentElement.textContent = "Error reading file";
+        };
         reader.readAsText(file);
     } else if (fileExt === 'pdf') {
-        // PDF files - enhanced preview with page navigation
+        // PDF files
         showPdfPreview(file, fileContentElement);
     } else if (fileType.includes('image/')) {
         // Image files
@@ -150,6 +166,9 @@ function processFile(file) {
         reader.onload = function(e) {
             fileImageElement.src = e.target.result;
             fileImageElement.style.display = 'block';
+        };
+        reader.onerror = function() {
+            fileContentElement.textContent = "Error loading image";
         };
         reader.readAsDataURL(file);
     } else if (fileExt === 'xlsx' || fileExt === 'xls') {
@@ -170,122 +189,107 @@ function showPdfPreview(file, container) {
     container.textContent = "Loading PDF...";
     
     const pageControls = document.getElementById('page-controls');
-    const pageButtons = document.getElementById('page-buttons');
-    const prevPageBtn = document.getElementById('prev-page-btn');
-    const nextPageBtn = document.getElementById('next-page-btn');
-    const currentPageSpan = document.getElementById('current-page');
-    const totalPagesSpan = document.getElementById('total-pages');
+    pageControls.style.display = 'flex';
     
-    let pdfDoc = null;
-    let currentPage = 1;
-    let pageRendering = false;
-    let pageNumPending = null;
-    let scale = 1.0;
-    
-    const renderPage = (num) => {
-        pageRendering = true;
-        currentPageSpan.textContent = num;
-        
-        pdfDoc.getPage(num).then(function(page) {
-            const viewport = page.getViewport({ scale: scale });
-            const canvas = document.createElement('canvas');
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            
-            container.innerHTML = '';
-            container.appendChild(canvas);
-            
-            const renderContext = {
-                canvasContext: context,
-                viewport: viewport
-            };
-            
-            const renderTask = page.render(renderContext);
-            
-            renderTask.promise.then(function() {
-                pageRendering = false;
-                if (pageNumPending !== null) {
-                    renderPage(pageNumPending);
-                    pageNumPending = null;
-                }
-                
-                // Extract text
-                return page.getTextContent();
-            }).then(function(textContent) {
-                const textDiv = document.createElement('div');
-                textDiv.className = 'pdf-text-layer';
-                textDiv.innerHTML = textContent.items.map(item => 
-                    `<span style="left:${item.transform[4]}px; top:${item.transform[5]}px;">${item.str}</span>`
-                ).join('');
-                container.appendChild(textDiv);
-            });
-        });
-    };
-    
-    const queueRenderPage = (num) => {
-        if (pageRendering) {
-            pageNumPending = num;
-        } else {
-            renderPage(num);
-        }
-    };
-    
-    const onPrevPage = () => {
-        if (currentPage <= 1) return;
-        currentPage--;
-        queueRenderPage(currentPage);
-    };
-    
-    const onNextPage = () => {
-        if (currentPage >= pdfDoc.numPages) return;
-        currentPage++;
-        queueRenderPage(currentPage);
-    };
-    
-    prevPageBtn.addEventListener('click', onPrevPage);
-    nextPageBtn.addEventListener('click', onNextPage);
-    
-    // Initialize PDF.js
     const reader = new FileReader();
     reader.onload = function() {
         const typedarray = new Uint8Array(this.result);
         
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
             pdfDoc = pdf;
-            totalPagesSpan.textContent = pdf.numPages;
-            
-            // Show page controls
-            pageControls.style.display = 'flex';
-            pageButtons.innerHTML = '';
-            
-            // Render first page
-            renderPage(1);
-            
-            // Add delete page button for PDF
-            const deletePageBtn = document.createElement('button');
-            deletePageBtn.className = 'btn btn-danger';
-            deletePageBtn.textContent = 'Delete Current Page';
-            deletePageBtn.onclick = deleteCurrentPdfPage;
-            pageControls.appendChild(deletePageBtn);
-            
+            currentPdfPage = 1;
+            updatePdfPageControls();
+            renderPdfPage(pdf, currentPdfPage, container);
         }).catch(function(error) {
             container.textContent = "Error loading PDF: " + error.message;
         });
     };
+    reader.onerror = function() {
+        container.textContent = "Error reading PDF file";
+    };
     reader.readAsArrayBuffer(file);
 }
 
-function deleteCurrentPdfPage() {
-    if (uploadedFiles.length === 0 || currentFileIndex === -1) return;
+function renderPdfPage(pdf, pageNum, container) {
+    container.textContent = "Loading page " + pageNum + "...";
     
-    const file = uploadedFiles[currentFileIndex];
-    if (file.name.split('.').pop().toLowerCase() !== 'pdf') return;
+    pdf.getPage(pageNum).then(function(page) {
+        const viewport = page.getViewport({ scale: 1.5 });
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.height = viewport.height;
+        canvas.width = viewport.width;
+        
+        container.innerHTML = '';
+        container.appendChild(canvas);
+        
+        const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+        };
+        
+        page.render(renderContext).promise.then(function() {
+            return page.getTextContent();
+        }).then(function(textContent) {
+            const textDiv = document.createElement('div');
+            textDiv.className = 'pdf-text-layer';
+            textDiv.innerHTML = textContent.items.map(item => 
+                `<span style="left:${item.transform[4]}px; top:${item.transform[5]}px;">${item.str}</span>`
+            ).join('');
+            container.appendChild(textDiv);
+        });
+    }).catch(function(error) {
+        container.textContent = "Error rendering PDF page: " + error.message;
+    });
+}
+
+function updatePdfPageControls() {
+    if (!pdfDoc) return;
+    
+    document.getElementById('current-page').textContent = currentPdfPage;
+    document.getElementById('total-pages').textContent = pdfDoc.numPages;
+    
+    document.getElementById('prev-page-btn').disabled = currentPdfPage <= 1;
+    document.getElementById('next-page-btn').disabled = currentPdfPage >= pdfDoc.numPages;
+}
+
+function showPrevPdfPage() {
+    if (currentPdfPage > 1) {
+        currentPdfPage--;
+        renderPdfPage(pdfDoc, currentPdfPage, document.getElementById('file-text-content'));
+        updatePdfPageControls();
+    }
+}
+
+function showNextPdfPage() {
+    if (pdfDoc && currentPdfPage < pdfDoc.numPages) {
+        currentPdfPage++;
+        renderPdfPage(pdfDoc, currentPdfPage, document.getElementById('file-text-content'));
+        updatePdfPageControls();
+    }
+}
+
+function deleteCurrentPdfPage() {
+    if (!pdfDoc || currentFileIndex === -1) return;
     
     if (confirm("Are you sure you want to delete the current PDF page? This action cannot be undone.")) {
-        // In a real app, you would use a PDF library to remove the page
-        // For this demo, we'll just show a message
+        // Note: Actual PDF page deletion would require a PDF manipulation library
+        // This is just a demonstration of the UI functionality
         showToast("PDF page deletion would be implemented with a PDF manipulation library", "info");
+    }
+}
+
+function showPrevFile() {
+    if (currentFileIndex > 0) {
+        currentFileIndex--;
+        processFile(uploadedFiles[currentFileIndex]);
+    }
+}
+
+function showNextFile() {
+    if (currentFileIndex < uploadedFiles.length - 1) {
+        currentFileIndex++;
+        processFile(uploadedFiles[currentFileIndex]);
     }
 }
 
@@ -312,6 +316,9 @@ function parseExcelFile(file) {
             document.getElementById('file-text-content').textContent = "Error parsing Excel file: " + error.message;
         }
     };
+    reader.onerror = function() {
+        document.getElementById('file-text-content').textContent = "Error reading Excel file";
+    };
     reader.readAsArrayBuffer(file);
 }
 
@@ -332,6 +339,9 @@ function extractTextFromDocx(file, container) {
             .catch(function(error) {
                 container.textContent = "Error extracting text from DOCX: " + error.message;
             });
+    };
+    reader.onerror = function() {
+        container.textContent = "Error reading DOCX file";
     };
     reader.readAsArrayBuffer(file);
 }
@@ -391,8 +401,10 @@ function downloadCurrentFile() {
         a.download = file.name;
         document.body.appendChild(a);
         a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 100);
     }
 }
 

@@ -1,4 +1,4 @@
-// app.js - Complete working version
+// app.js - Complete version with PDF enhancements
 // Global data store
 let tableData = [];
 let currentFormat = '';
@@ -339,7 +339,7 @@ async function deleteCurrentPdfPage() {
     }
     
     const pageNumToDelete = parseInt(activeBtn.textContent);
-    if (isNaN(pageNumToDelete)) {
+    if (isNaN(pageNumToDelete) || pageNumToDelete < 1 || pageNumToDelete > currentPdf.numPages) {
         showToast("Invalid page selection", "error");
         return;
     }
@@ -355,11 +355,19 @@ async function deleteCurrentPdfPage() {
         const originalArrayBuffer = await readFileAsArrayBuffer(currentFile);
         
         // Load the PDF document
-        const newPdfDoc = await PDFLib.PDFDocument.load(originalArrayBuffer);
-        const pages = newPdfDoc.getPages();
+        const loadingTask = pdfjsLib.getDocument(originalArrayBuffer);
+        const pdfDoc = await loadingTask.promise;
         
-        // Remove the selected page
-        newPdfDoc.removePage(pageNumToDelete - 1);
+        // Create a new PDF document
+        const newPdfDoc = await PDFLib.PDFDocument.create();
+        
+        // Copy all pages except the one to delete
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            if (i !== pageNumToDelete) {
+                const [page] = await newPdfDoc.copyPages(pdfDoc, [i - 1]);
+                newPdfDoc.addPage(page);
+            }
+        }
         
         // Save the new PDF
         const newPdfBytes = await newPdfDoc.save();

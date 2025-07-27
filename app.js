@@ -105,6 +105,7 @@ function processFile(file) {
     const fileContentElement = document.getElementById('file-text-content');
     const fileImageElement = document.getElementById('file-image-content');
     const pageControls = document.getElementById('page-controls');
+    const editControls = document.getElementById('edit-controls');
     
     // Display file info
     previewName.textContent = file.name;
@@ -117,14 +118,18 @@ function processFile(file) {
     fileContentElement.textContent = '';
     pageControls.style.display = 'none';
     
+    // Show edit controls only for editable files
+    const fileExt = file.name.split('.').pop().toLowerCase();
+    const editableTypes = ['txt', 'csv', 'json', 'md'];
+    editControls.style.display = editableTypes.includes(fileExt) ? 'block' : 'none';
+    
     // Show preview container
     previewContainer.style.display = 'block';
     
     // Process based on file type
     const fileType = file.type;
-    const fileExt = file.name.split('.').pop().toLowerCase();
     
-    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json') {
+    if (fileType.includes('text/') || fileExt === 'txt' || fileExt === 'csv' || fileExt === 'json' || fileExt === 'md') {
         // Text-based files
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -137,8 +142,8 @@ function processFile(file) {
         };
         reader.readAsText(file);
     } else if (fileExt === 'pdf') {
-        // PDF files
-        extractTextFromPdf(file, fileContentElement);
+        // PDF files - enhanced preview with page navigation
+        showPdfPreview(file, fileContentElement);
     } else if (fileType.includes('image/')) {
         // Image files
         const reader = new FileReader();
@@ -161,36 +166,109 @@ function processFile(file) {
     }
 }
 
-function extractTextFromPdf(file, container) {
+function showPdfPreview(file, container) {
     container.textContent = "Loading PDF...";
     
+    const pageControls = document.getElementById('page-controls');
+    const pageButtons = document.getElementById('page-buttons');
+    const prevPageBtn = document.getElementById('prev-page-btn');
+    const nextPageBtn = document.getElementById('next-page-btn');
+    const currentPageSpan = document.getElementById('current-page');
+    const totalPagesSpan = document.getElementById('total-pages');
+    
+    let pdfDoc = null;
+    let currentPage = 1;
+    let pageRendering = false;
+    let pageNumPending = null;
+    let scale = 1.0;
+    
+    const renderPage = (num) => {
+        pageRendering = true;
+        currentPageSpan.textContent = num;
+        
+        pdfDoc.getPage(num).then(function(page) {
+            const viewport = page.getViewport({ scale: scale });
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            container.innerHTML = '';
+            container.appendChild(canvas);
+            
+            const renderContext = {
+                canvasContext: context,
+                viewport: viewport
+            };
+            
+            const renderTask = page.render(renderContext);
+            
+            renderTask.promise.then(function() {
+                pageRendering = false;
+                if (pageNumPending !== null) {
+                    renderPage(pageNumPending);
+                    pageNumPending = null;
+                }
+                
+                // Extract text
+                return page.getTextContent();
+            }).then(function(textContent) {
+                const textDiv = document.createElement('div');
+                textDiv.className = 'pdf-text-layer';
+                textDiv.innerHTML = textContent.items.map(item => 
+                    `<span style="left:${item.transform[4]}px; top:${item.transform[5]}px;">${item.str}</span>`
+                ).join('');
+                container.appendChild(textDiv);
+            });
+        });
+    };
+    
+    const queueRenderPage = (num) => {
+        if (pageRendering) {
+            pageNumPending = num;
+        } else {
+            renderPage(num);
+        }
+    };
+    
+    const onPrevPage = () => {
+        if (currentPage <= 1) return;
+        currentPage--;
+        queueRenderPage(currentPage);
+    };
+    
+    const onNextPage = () => {
+        if (currentPage >= pdfDoc.numPages) return;
+        currentPage++;
+        queueRenderPage(currentPage);
+    };
+    
+    prevPageBtn.addEventListener('click', onPrevPage);
+    nextPageBtn.addEventListener('click', onNextPage);
+    
+    // Initialize PDF.js
     const reader = new FileReader();
     reader.onload = function() {
         const typedarray = new Uint8Array(this.result);
         
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-            let text = "";
-            const totalPages = pdf.numPages;
+            pdfDoc = pdf;
+            totalPagesSpan.textContent = pdf.numPages;
             
-            // Show page controls if multi-page
-            if (totalPages > 1) {
-                const pageControls = document.getElementById('page-controls');
-                pageControls.style.display = 'flex';
-                const pageButtons = document.getElementById('page-buttons');
-                pageButtons.innerHTML = '';
-                
-                for (let i = 1; i <= Math.min(totalPages, 10); i++) {
-                    const btn = document.createElement('button');
-                    btn.className = 'page-btn';
-                    if (i === 1) btn.classList.add('active');
-                    btn.textContent = i;
-                    btn.onclick = () => renderPdfPage(pdf, i, container);
-                    pageButtons.appendChild(btn);
-                }
-            }
+            // Show page controls
+            pageControls.style.display = 'flex';
+            pageButtons.innerHTML = '';
             
             // Render first page
-            renderPdfPage(pdf, 1, container);
+            renderPage(1);
+            
+            // Add delete page button for PDF
+            const deletePageBtn = document.createElement('button');
+            deletePageBtn.className = 'btn btn-danger';
+            deletePageBtn.textContent = 'Delete Current Page';
+            deletePageBtn.onclick = deleteCurrentPdfPage;
+            pageControls.appendChild(deletePageBtn);
+            
         }).catch(function(error) {
             container.textContent = "Error loading PDF: " + error.message;
         });
@@ -198,52 +276,17 @@ function extractTextFromPdf(file, container) {
     reader.readAsArrayBuffer(file);
 }
 
-function renderPdfPage(pdf, pageNum, container) {
-    container.textContent = "Loading page " + pageNum + "...";
+function deleteCurrentPdfPage() {
+    if (uploadedFiles.length === 0 || currentFileIndex === -1) return;
     
-    // Update active page button
-    document.querySelectorAll('.page-btn').forEach(btn => {
-        btn.classList.toggle('active', parseInt(btn.textContent) === pageNum);
-    });
+    const file = uploadedFiles[currentFileIndex];
+    if (file.name.split('.').pop().toLowerCase() !== 'pdf') return;
     
-    pdf.getPage(pageNum).then(function(page) {
-        const viewport = page.getViewport({ scale: 1.0 });
-        
-        // Create canvas for rendering
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
-        
-        // Clear container and add canvas
-        container.innerHTML = '';
-        container.appendChild(canvas);
-        
-        // Render PDF page to canvas
-        page.render({
-            canvasContext: context,
-            viewport: viewport
-        }).promise.then(function() {
-            // Extract text
-            return page.getTextContent();
-        }).then(function(textContent) {
-            // Add text below the rendered page
-            const textDiv = document.createElement('div');
-            textDiv.style.marginTop = '20px';
-            textDiv.style.padding = '10px';
-            textDiv.style.background = '#f5f5f5';
-            textDiv.textContent = textContent.items.map(item => item.str).join(' ');
-            container.appendChild(textDiv);
-            
-            // Try to parse as table if it looks tabular
-            const text = textDiv.textContent;
-            if (text.match(/\w+\s{2,}\w+/)) {
-                parseTable(text);
-            }
-        });
-    }).catch(function(error) {
-        container.textContent = "Error rendering PDF page: " + error.message;
-    });
+    if (confirm("Are you sure you want to delete the current PDF page? This action cannot be undone.")) {
+        // In a real app, you would use a PDF library to remove the page
+        // For this demo, we'll just show a message
+        showToast("PDF page deletion would be implemented with a PDF manipulation library", "info");
+    }
 }
 
 function parseExcelFile(file) {

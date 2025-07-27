@@ -1,4 +1,4 @@
-// app.js - Complete version with PDF enhancements
+// app.js - Complete working version
 // Global data store
 let tableData = [];
 let currentFormat = '';
@@ -339,7 +339,7 @@ async function deleteCurrentPdfPage() {
     }
     
     const pageNumToDelete = parseInt(activeBtn.textContent);
-    if (isNaN(pageNumToDelete) {
+    if (isNaN(pageNumToDelete)) {
         showToast("Invalid page selection", "error");
         return;
     }
@@ -435,7 +435,7 @@ function formatFileSize(bytes) {
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 function deleteCurrentFile() {
@@ -454,21 +454,30 @@ function deleteCurrentFile() {
 
 function updateFileContent() {
     if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
+        const file = uploadedFiles[currentFileIndex];
+        const fileExt = file.name.split('.').pop().toLowerCase();
+        
+        if (fileExt === 'pdf') {
+            showToast("Cannot directly edit PDF content. Use the delete page feature instead.", "warning");
+            return;
+        }
+        
         const fileContentElement = document.getElementById('file-text-content');
         const updatedContent = fileContentElement.textContent;
-        const originalFile = uploadedFiles[currentFileIndex];
         
-        const newFile = new File([updatedContent], originalFile.name, {
-            type: originalFile.type,
+        const newFile = new File([updatedContent], file.name, {
+            type: file.type,
             lastModified: Date.now()
         });
         
         uploadedFiles[currentFileIndex] = newFile;
         showToast("File content updated!", "success");
         
-        if (originalFile.name.split('.').pop().toLowerCase() === 'csv') {
+        if (fileExt === 'csv') {
             parseTable(updatedContent);
         }
+    } else {
+        showToast("No file selected to update", "warning");
     }
 }
 

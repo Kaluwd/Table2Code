@@ -1,10 +1,11 @@
-// app.js
+// app.js - Complete version with PDF enhancements
 // Global data store
 let tableData = [];
 let currentFormat = '';
 let dataChart = null;
 let uploadedFiles = [];
 let currentFileIndex = -1;
+let currentPdf = null;
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -49,6 +50,7 @@ function setupEventListeners() {
     document.getElementById('delete-file-btn').addEventListener('click', deleteCurrentFile);
     document.getElementById('update-file-btn').addEventListener('click', updateFileContent);
     document.getElementById('download-file-btn').addEventListener('click', downloadCurrentFile);
+    document.getElementById('delete-page-btn').addEventListener('click', deleteCurrentPdfPage);
 
     // Conversion buttons
     document.getElementById('sql-btn').addEventListener('click', () => convertTo('sql'));
@@ -105,6 +107,7 @@ function processFile(file) {
     const fileContentElement = document.getElementById('file-text-content');
     const fileImageElement = document.getElementById('file-image-content');
     const pageControls = document.getElementById('page-controls');
+    const pdfActions = document.getElementById('pdf-actions');
     
     // Display file info
     previewName.textContent = file.name;
@@ -116,6 +119,7 @@ function processFile(file) {
     fileImageElement.style.display = 'none';
     fileContentElement.textContent = '';
     pageControls.style.display = 'none';
+    pdfActions.style.display = 'none';
     
     // Show preview container
     previewContainer.style.display = 'block';
@@ -138,6 +142,7 @@ function processFile(file) {
         reader.readAsText(file);
     } else if (fileExt === 'pdf') {
         // PDF files
+        pdfActions.style.display = 'block';
         extractTextFromPdf(file, fileContentElement);
     } else if (fileType.includes('image/')) {
         // Image files
@@ -169,7 +174,7 @@ function extractTextFromPdf(file, container) {
         const typedarray = new Uint8Array(this.result);
         
         pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-            let text = "";
+            currentPdf = pdf;
             const totalPages = pdf.numPages;
             
             // Show page controls if multi-page
@@ -179,18 +184,25 @@ function extractTextFromPdf(file, container) {
                 const pageButtons = document.getElementById('page-buttons');
                 pageButtons.innerHTML = '';
                 
-                for (let i = 1; i <= Math.min(totalPages, 10); i++) {
+                // Add "All" button
+                const allBtn = document.createElement('button');
+                allBtn.className = 'page-btn active';
+                allBtn.textContent = 'All';
+                allBtn.onclick = () => renderAllPdfPages(pdf, container);
+                pageButtons.appendChild(allBtn);
+                
+                // Add individual page buttons
+                for (let i = 1; i <= Math.min(totalPages, 20); i++) {
                     const btn = document.createElement('button');
                     btn.className = 'page-btn';
-                    if (i === 1) btn.classList.add('active');
                     btn.textContent = i;
                     btn.onclick = () => renderPdfPage(pdf, i, container);
                     pageButtons.appendChild(btn);
                 }
             }
             
-            // Render first page
-            renderPdfPage(pdf, 1, container);
+            // Render all pages by default
+            renderAllPdfPages(pdf, container);
         }).catch(function(error) {
             container.textContent = "Error loading PDF: " + error.message;
         });
@@ -198,15 +210,79 @@ function extractTextFromPdf(file, container) {
     reader.readAsArrayBuffer(file);
 }
 
-function renderPdfPage(pdf, pageNum, container) {
-    container.textContent = "Loading page " + pageNum + "...";
+async function renderAllPdfPages(pdf, container) {
+    container.innerHTML = '<div class="pdf-loading">Loading all pages...</div>';
+    
+    // Update active page button
+    document.querySelectorAll('.page-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.textContent === 'All');
+    });
+    
+    try {
+        const totalPages = pdf.numPages;
+        const pdfContainer = document.createElement('div');
+        pdfContainer.className = 'pdf-all-pages';
+        
+        // Render each page
+        for (let i = 1; i <= totalPages; i++) {
+            const page = await pdf.getPage(i);
+            const viewport = page.getViewport({ scale: 1.0 });
+            
+            // Create page container
+            const pageContainer = document.createElement('div');
+            pageContainer.className = 'pdf-page-container';
+            
+            // Add page number label
+            const pageLabel = document.createElement('div');
+            pageLabel.className = 'pdf-page-label';
+            pageLabel.textContent = `Page ${i}`;
+            pageContainer.appendChild(pageLabel);
+            
+            // Create canvas for rendering
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            canvas.className = 'pdf-page-canvas';
+            
+            // Render PDF page to canvas
+            await page.render({
+                canvasContext: context,
+                viewport: viewport
+            }).promise;
+            
+            pageContainer.appendChild(canvas);
+            pdfContainer.appendChild(pageContainer);
+            
+            // Extract text
+            try {
+                const textContent = await page.getTextContent();
+                const textDiv = document.createElement('div');
+                textDiv.className = 'pdf-page-text';
+                textDiv.textContent = textContent.items.map(item => item.str).join(' ');
+                pageContainer.appendChild(textDiv);
+            } catch (textError) {
+                console.error("Error extracting text from page", i, textError);
+            }
+        }
+        
+        container.innerHTML = '';
+        container.appendChild(pdfContainer);
+    } catch (error) {
+        container.textContent = "Error rendering PDF pages: " + error.message;
+    }
+}
+
+async function renderPdfPage(pdf, pageNum, container) {
+    container.innerHTML = '<div class="pdf-loading">Loading page ' + pageNum + '...</div>';
     
     // Update active page button
     document.querySelectorAll('.page-btn').forEach(btn => {
         btn.classList.toggle('active', parseInt(btn.textContent) === pageNum);
     });
     
-    pdf.getPage(pageNum).then(function(page) {
+    try {
+        const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 1.0 });
         
         // Create canvas for rendering
@@ -214,35 +290,102 @@ function renderPdfPage(pdf, pageNum, container) {
         const context = canvas.getContext('2d');
         canvas.height = viewport.height;
         canvas.width = viewport.width;
+        canvas.className = 'pdf-page-canvas';
+        
+        // Render PDF page to canvas
+        await page.render({
+            canvasContext: context,
+            viewport: viewport
+        }).promise;
         
         // Clear container and add canvas
         container.innerHTML = '';
         container.appendChild(canvas);
         
-        // Render PDF page to canvas
-        page.render({
-            canvasContext: context,
-            viewport: viewport
-        }).promise.then(function() {
-            // Extract text
-            return page.getTextContent();
-        }).then(function(textContent) {
-            // Add text below the rendered page
-            const textDiv = document.createElement('div');
-            textDiv.style.marginTop = '20px';
-            textDiv.style.padding = '10px';
-            textDiv.style.background = '#f5f5f5';
-            textDiv.textContent = textContent.items.map(item => item.str).join(' ');
-            container.appendChild(textDiv);
-            
-            // Try to parse as table if it looks tabular
-            const text = textDiv.textContent;
-            if (text.match(/\w+\s{2,}\w+/)) {
-                parseTable(text);
-            }
-        });
-    }).catch(function(error) {
+        // Extract text
+        const textContent = await page.getTextContent();
+        const textDiv = document.createElement('div');
+        textDiv.className = 'pdf-page-text';
+        textDiv.textContent = textContent.items.map(item => item.str).join(' ');
+        container.appendChild(textDiv);
+        
+        // Try to parse as table if it looks tabular
+        const text = textDiv.textContent;
+        if (text.match(/\w+\s{2,}\w+/)) {
+            parseTable(text);
+        }
+    } catch (error) {
         container.textContent = "Error rendering PDF page: " + error.message;
+    }
+}
+
+async function deleteCurrentPdfPage() {
+    if (!currentPdf || currentPdf.numPages <= 1) {
+        showToast("Cannot delete page from a single-page PDF", "warning");
+        return;
+    }
+    
+    const currentFile = uploadedFiles[currentFileIndex];
+    if (!currentFile || !currentFile.name.endsWith('.pdf')) {
+        showToast("No PDF file selected", "warning");
+        return;
+    }
+    
+    // Get the currently displayed page number
+    const activeBtn = document.querySelector('.page-btn.active');
+    if (!activeBtn || activeBtn.textContent === 'All') {
+        showToast("Please select a specific page to delete", "warning");
+        return;
+    }
+    
+    const pageNumToDelete = parseInt(activeBtn.textContent);
+    if (isNaN(pageNumToDelete) {
+        showToast("Invalid page selection", "error");
+        return;
+    }
+    
+    if (!confirm(`Delete page ${pageNumToDelete} from ${currentFile.name}?`)) {
+        return;
+    }
+    
+    try {
+        showToast("Processing PDF...", "info");
+        
+        // Read the original PDF
+        const originalArrayBuffer = await readFileAsArrayBuffer(currentFile);
+        
+        // Load the PDF document
+        const newPdfDoc = await PDFLib.PDFDocument.load(originalArrayBuffer);
+        const pages = newPdfDoc.getPages();
+        
+        // Remove the selected page
+        newPdfDoc.removePage(pageNumToDelete - 1);
+        
+        // Save the new PDF
+        const newPdfBytes = await newPdfDoc.save();
+        const newFile = new File([newPdfBytes], currentFile.name, {
+            type: 'application/pdf',
+            lastModified: Date.now()
+        });
+        
+        // Replace the original file with the modified one
+        uploadedFiles[currentFileIndex] = newFile;
+        
+        // Reload the preview
+        processFile(newFile);
+        showToast(`Page ${pageNumToDelete} deleted successfully`, "success");
+    } catch (error) {
+        console.error("Error deleting PDF page:", error);
+        showToast("Error deleting page: " + error.message, "error");
+    }
+}
+
+function readFileAsArrayBuffer(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
     });
 }
 
@@ -253,14 +396,10 @@ function parseExcelFile(file) {
             const data = new Uint8Array(e.target.result);
             const workbook = XLSX.read(data, { type: 'array' });
             
-            // Get first sheet
             const firstSheetName = workbook.SheetNames[0];
             const worksheet = workbook.Sheets[firstSheetName];
             
-            // Convert to JSON
             const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            
-            // Convert to tab-delimited text for display
             let textContent = jsonData.map(row => row.join('\t')).join('\n');
             
             document.getElementById('file-text-content').textContent = textContent;
@@ -280,8 +419,6 @@ function extractTextFromDocx(file, container) {
         mammoth.extractRawText({ arrayBuffer: e.target.result })
             .then(function(result) {
                 container.textContent = result.value;
-                
-                // Try to parse as table if it looks tabular
                 if (result.value.match(/\w+\s{2,}\w+/)) {
                     parseTable(result.value);
                 }
@@ -293,16 +430,14 @@ function extractTextFromDocx(file, container) {
     reader.readAsArrayBuffer(file);
 }
 
-// Format file size
 function formatFileSize(bytes) {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2) + ' ' + sizes[i];
 }
 
-// Delete current file
 function deleteCurrentFile() {
     if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
         uploadedFiles.splice(currentFileIndex, 1);
@@ -317,7 +452,6 @@ function deleteCurrentFile() {
     }
 }
 
-// Update file content
 function updateFileContent() {
     if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
         const fileContentElement = document.getElementById('file-text-content');
@@ -338,7 +472,6 @@ function updateFileContent() {
     }
 }
 
-// Download current file
 function downloadCurrentFile() {
     if (currentFileIndex >= 0 && currentFileIndex < uploadedFiles.length) {
         const file = uploadedFiles[currentFileIndex];
@@ -353,10 +486,8 @@ function downloadCurrentFile() {
     }
 }
 
-// Parse tabular data into 2D array
 function parseTable(text) {
     const rows = text.trim().split('\n').map(row => {
-        // Handle both tab and comma delimited data
         const separator = text.includes('\t') ? '\t' : ',';
         return row.split(separator).map(cell => cell.trim());
     });
@@ -366,7 +497,6 @@ function parseTable(text) {
     convertTo('smart-sql');
 }
 
-// Conversion logic
 function convertTo(format) {
     if (tableData.length === 0) {
         document.getElementById('output-area').textContent = "No data to convert. Paste your table first.";
@@ -408,7 +538,6 @@ function convertTo(format) {
     document.getElementById('output-area').textContent = output;
 }
 
-// SQL Generator (basic)
 function generateSQL() {
     const headers = tableData[0];
     let sql = `INSERT INTO ${guessTableName()} (${headers.join(', ')}) VALUES\n`;
@@ -424,13 +553,11 @@ function generateSQL() {
     return sql;
 }
 
-// SQL Generator (smart)
 function generateSmartSQL() {
     const headers = tableData[0];
     const firstRow = tableData[1] || [];
     const tableName = guessTableName();
     
-    // Infer column types
     const columns = headers.map((header, i) => {
         const sample = firstRow[i] || '';
         let type = 'VARCHAR(255)';
@@ -444,7 +571,6 @@ function generateSmartSQL() {
     return `CREATE TABLE ${tableName} (\n${columns.join(',\n')}\n);\n\n` + generateSQL();
 }
 
-// TypeScript Generator
 function generateTypeScript() {
     const headers = tableData[0];
     const firstRow = tableData[1] || [];
@@ -464,7 +590,6 @@ function generateTypeScript() {
     return `interface ${guessTableName().charAt(0).toUpperCase() + guessTableName().slice(1).replace(/\s+/g, '')} {\n${props.join('\n')}\n}`;
 }
 
-// JSON Generator
 function generateJSON() {
     const headers = tableData[0];
     const json = [];
@@ -480,7 +605,6 @@ function generateJSON() {
     return JSON.stringify(json, null, 2);
 }
 
-// Mock API Generator
 function generateMockAPI() {
     const headers = tableData[0];
     const mockData = tableData.slice(1).map(row => {
@@ -497,18 +621,13 @@ function generateMockAPI() {
     }, null, 2);
 }
 
-// Markdown Generator
 function generateMarkdown() {
     let md = '';
     const headers = tableData[0];
     
-    // Header row
     md += `| ${headers.join(' | ')} |\n`;
-    
-    // Separator
     md += `| ${headers.map(() => '---').join(' | ')} |\n`;
     
-    // Data rows
     for (let i = 1; i < tableData.length; i++) {
         md += `| ${tableData[i].join(' | ')} |\n`;
     }
@@ -516,7 +635,6 @@ function generateMarkdown() {
     return md;
 }
 
-// CSV Generator
 function generateCSV() {
     return tableData.map(row => 
         row.map(cell => {
@@ -526,7 +644,6 @@ function generateCSV() {
     ).join('\n');
 }
 
-// Download CSV
 function downloadCSV() {
     const csv = generateCSV();
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -540,7 +657,6 @@ function downloadCSV() {
     URL.revokeObjectURL(url);
 }
 
-// Clean dirty data
 function cleanData() {
     tableData = tableData.map(row => 
         row.map(cell => {
@@ -554,7 +670,6 @@ function cleanData() {
     showToast("Common issues fixed: NULLs, dates, whitespace", "success");
 }
 
-// Analyze data for issues
 function analyzeData() {
     const issues = [];
     const headers = tableData[0] || [];
@@ -566,7 +681,6 @@ function analyzeData() {
         });
     }
     
-    // Check for duplicate rows
     const uniqueRows = new Set();
     for (let i = 1; i < tableData.length; i++) {
         const rowStr = tableData[i].join('|');
@@ -580,7 +694,6 @@ function analyzeData() {
         uniqueRows.add(rowStr);
     }
     
-    // Check for empty cells
     for (let i = 1; i < tableData.length; i++) {
         for (let j = 0; j < tableData[i].length; j++) {
             if (tableData[i][j] === '') {
@@ -594,7 +707,6 @@ function analyzeData() {
         }
     }
     
-    // Check date formats
     const dateColumns = headers.filter(h => h.toLowerCase().includes('date'));
     for (let i = 1; i < tableData.length; i++) {
         dateColumns.forEach((col) => {
@@ -615,7 +727,6 @@ function analyzeData() {
     displayIssues(issues);
 }
 
-// Display found issues
 function displayIssues(issues) {
     const issuesList = document.getElementById('issues-list');
     const issuesArea = document.getElementById('issues-area');
@@ -666,7 +777,6 @@ function displayIssues(issues) {
     issuesArea.style.display = 'block';
 }
 
-// Show editable table with highlight
 function showEditableTableHighlight(rowIndex, colIndex = null) {
     showEditableTable();
     if (rowIndex !== undefined) {
@@ -684,18 +794,15 @@ function showEditableTableHighlight(rowIndex, colIndex = null) {
     }
 }
 
-// Show editable table
 function showEditableTable() {
     const table = document.getElementById('data-table');
     table.innerHTML = '';
     
-    // Create header row
     const headerRow = document.createElement('tr');
     (tableData[0] || ['Column 1']).forEach((header, colIndex) => {
         const th = document.createElement('th');
         th.textContent = header;
         
-        // Add column delete button
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-sm btn-danger';
         delBtn.textContent = '×';
@@ -709,13 +816,11 @@ function showEditableTable() {
         headerRow.appendChild(th);
     });
     
-    // Add empty cell for row actions
     const actionsTh = document.createElement('th');
     actionsTh.textContent = 'Actions';
     headerRow.appendChild(actionsTh);
     table.appendChild(headerRow);
     
-    // Create data rows
     for (let i = 1; i < tableData.length; i++) {
         const row = document.createElement('tr');
         
@@ -733,7 +838,6 @@ function showEditableTable() {
             row.appendChild(td);
         });
         
-        // Fill missing columns
         const missingCols = (tableData[0] || ['Column 1']).length - tableData[i].length;
         for (let j = 0; j < missingCols; j++) {
             const td = document.createElement('td');
@@ -747,7 +851,6 @@ function showEditableTable() {
             row.appendChild(td);
         }
         
-        // Add row delete button
         const actionsTd = document.createElement('td');
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-sm btn-danger';
@@ -762,7 +865,6 @@ function showEditableTable() {
         table.appendChild(row);
     }
     
-    // Handle empty table case
     if (tableData.length < 2) {
         const row = document.createElement('tr');
         (tableData[0] || ['Column 1']).forEach((_, colIndex) => {
@@ -777,7 +879,6 @@ function showEditableTable() {
             row.appendChild(td);
         });
         
-        // Add row delete button
         const actionsTd = document.createElement('td');
         const delBtn = document.createElement('button');
         delBtn.className = 'btn btn-sm btn-danger';
@@ -796,31 +897,25 @@ function showEditableTable() {
     document.getElementById('issues-area').style.display = 'none';
 }
 
-// Hide editable table
 function hideEditableTable() {
     document.getElementById('editable-table').style.display = 'none';
 }
 
-// Hide issues panel
 function hideIssuesPanel() {
     document.getElementById('issues-area').style.display = 'none';
 }
 
-// Save table edits
 function saveTableEdits() {
     const inputs = document.querySelectorAll('#data-table .cell-edit');
     
-    // First update existing data
     inputs.forEach(input => {
         const row = parseInt(input.dataset.row);
         const col = parseInt(input.dataset.col);
         
-        // Ensure we have enough rows
         while (tableData.length <= row + 1) {
             tableData.push([]);
         }
         
-        // Ensure we have enough columns in this row
         while (tableData[row + 1].length <= col) {
             tableData[row + 1].push('');
         }
@@ -828,7 +923,6 @@ function saveTableEdits() {
         tableData[row + 1][col] = input.value;
     });
     
-    // Update headers if they were edited
     const headerInputs = document.querySelectorAll('#data-table th input.cell-edit');
     if (headerInputs.length > 0) {
         tableData[0] = Array.from(headerInputs).map(input => input.value);
@@ -839,14 +933,12 @@ function saveTableEdits() {
     hideEditableTable();
 }
 
-// Add new row
 function addNewRow() {
     const newRow = (tableData[0] || ['Column 1']).map(() => '');
     tableData.push(newRow);
     showEditableTable();
 }
 
-// Add new column
 function addNewColumn() {
     const colName = prompt("Enter column name:", `column_${tableData[0] ? tableData[0].length + 1 : 1}`);
     if (colName === null) return;
@@ -857,7 +949,6 @@ function addNewColumn() {
         tableData[0].push(colName);
     }
     
-    // Add empty values to all rows
     for (let i = 1; i < tableData.length; i++) {
         tableData[i].push('');
     }
@@ -865,7 +956,6 @@ function addNewColumn() {
     showEditableTable();
 }
 
-// Delete selected row
 function deleteSelectedRow() {
     const selectedRow = document.querySelector('#data-table tr[style*="background-color"]');
     if (selectedRow) {
@@ -878,7 +968,6 @@ function deleteSelectedRow() {
     }
 }
 
-// Delete selected column
 function deleteSelectedColumn() {
     const selectedCell = document.querySelector('#data-table td[style*="background-color"]');
     if (selectedCell) {
@@ -889,7 +978,6 @@ function deleteSelectedColumn() {
     }
 }
 
-// Delete row
 function deleteRow(rowIndex) {
     if (tableData.length > rowIndex + 1) {
         tableData.splice(rowIndex + 1, 1);
@@ -898,7 +986,6 @@ function deleteRow(rowIndex) {
     convertTo(currentFormat);
 }
 
-// Delete column
 function deleteColumn(colIndex) {
     if (confirm(`Delete column "${tableData[0][colIndex]}"? This cannot be undone.`)) {
         tableData.forEach(row => {
@@ -912,7 +999,6 @@ function deleteColumn(colIndex) {
     }
 }
 
-// Set cell value
 function setCellValue(rowIndex, colIndex, value) {
     if (tableData.length > rowIndex + 1 && tableData[rowIndex + 1].length > colIndex) {
         tableData[rowIndex + 1][colIndex] = value;
@@ -922,7 +1008,6 @@ function setCellValue(rowIndex, colIndex, value) {
     hideIssuesPanel();
 }
 
-// Fix date format
 function fixDateFormat(rowIndex, colIndex) {
     if (tableData.length > rowIndex + 1 && tableData[rowIndex + 1].length > colIndex) {
         const value = tableData[rowIndex + 1][colIndex];
@@ -935,7 +1020,6 @@ function fixDateFormat(rowIndex, colIndex) {
     hideIssuesPanel();
 }
 
-// Shareable link
 function generateShareLink() {
     if (tableData.length === 0) {
         showToast("No data to share. Please paste your table first.", "warning");
@@ -954,7 +1038,6 @@ function generateShareLink() {
     });
 }
 
-// Load shared data
 function loadSharedData() {
     if (window.location.hash.includes('data=')) {
         try {
@@ -962,7 +1045,6 @@ function loadSharedData() {
             const decoded = decodeURIComponent(atob(encoded));
             const data = JSON.parse(decoded);
             
-            // Convert to tab-delimited string
             const text = data.map(row => row.join('\t')).join('\n');
             parseTable(text);
         } catch (e) {
@@ -971,7 +1053,6 @@ function loadSharedData() {
     }
 }
 
-// Copy to clipboard
 function copyToClipboard() {
     const output = document.getElementById('output-area').textContent;
     if (!output || output === "Your converted code will appear here..." || output.includes("No data to convert")) {
@@ -993,7 +1074,6 @@ function copyToClipboard() {
     });
 }
 
-// Dark mode toggle
 function toggleDarkMode() {
     document.body.classList.toggle('dark-mode');
     localStorage.setItem('darkMode', document.body.classList.contains('dark-mode'));
@@ -1005,7 +1085,6 @@ function toggleDarkMode() {
     }
 }
 
-// Check for saved dark mode preference
 function checkDarkModePreference() {
     if (localStorage.getItem('darkMode') === 'true') {
         document.body.classList.add('dark-mode');
@@ -1013,13 +1092,11 @@ function checkDarkModePreference() {
     }
 }
 
-// Refresh table display
 function refreshTable() {
     document.getElementById('input-area').textContent = 
         tableData.map(row => row.join('\t')).join('\n');
 }
 
-// Guess table name
 function guessTableName() {
     const headers = tableData[0] || [];
     if (headers.some(h => h.toLowerCase().includes('email'))) return 'users';
@@ -1028,7 +1105,6 @@ function guessTableName() {
     return 'table_data';
 }
 
-// Chart functions
 function generateChart() {
     if (tableData.length < 2) {
         showToast("Not enough data to generate a chart. Need at least one data row.", "warning");
@@ -1038,7 +1114,6 @@ function generateChart() {
     const modal = document.getElementById('chart-modal');
     modal.style.display = 'block';
 
-    // Populate axis selectors
     const xAxisSelect = document.getElementById('x-axis');
     const yAxisSelect = document.getElementById('y-axis');
     xAxisSelect.innerHTML = '';
@@ -1052,7 +1127,6 @@ function generateChart() {
         yAxisSelect.appendChild(option);
     });
 
-    // Set default y-axis to the first numeric column if available
     for (let i = 0; i < tableData[0].length; i++) {
         if (!isNaN(tableData[1][i])) {
             yAxisSelect.value = i;
@@ -1070,12 +1144,10 @@ function updateChart() {
     
     const ctx = document.getElementById('data-chart').getContext('2d');
     
-    // Destroy previous chart if exists
     if (dataChart) {
         dataChart.destroy();
     }
     
-    // Prepare data
     const labels = [];
     const dataValues = [];
     
@@ -1173,7 +1245,6 @@ function downloadChartSVG() {
     img.src = canvas.toDataURL('image/png');
 }
 
-// Helper functions for charts
 function generateColors(count) {
     const colors = [];
     const hueStep = 360 / count;
@@ -1198,7 +1269,6 @@ function darkenColor(color, percent) {
     return color;
 }
 
-// Show toast notification
 function showToast(message, type = 'success') {
     const toast = document.getElementById('toast');
     toast.textContent = message;
@@ -1211,7 +1281,6 @@ function showToast(message, type = 'success') {
     }, 3000);
 }
 
-// About modal
 function showAbout() {
     document.getElementById('modal-title').textContent = 'About Table2Code';
     document.getElementById('modal-content').innerHTML = `
@@ -1229,7 +1298,6 @@ function showAbout() {
     document.getElementById('info-modal').style.display = 'flex';
 }
 
-// Privacy modal
 function showPrivacy() {
     document.getElementById('modal-title').textContent = 'Privacy Policy';
     document.getElementById('modal-content').innerHTML = `
@@ -1244,7 +1312,6 @@ function showPrivacy() {
     document.getElementById('info-modal').style.display = 'flex';
 }
 
-// Feedback modal
 function showFeedback() {
     document.getElementById('modal-title').textContent = 'Feedback';
     document.getElementById('modal-content').innerHTML = `
@@ -1255,7 +1322,6 @@ function showFeedback() {
     document.getElementById('info-modal').style.display = 'flex';
 }
 
-// Developer info modal
 function showDeveloperInfo() {
     document.getElementById('modal-title').textContent = 'About the Developer';
     document.getElementById('modal-content').innerHTML = `
